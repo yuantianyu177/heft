@@ -1,14 +1,7 @@
 import torch
 import importlib
-import uuid
 
-machine_id = uuid.getnode()
-if machine_id == 255503834248574 or machine_id == 255503834248024:
-    MODEL_CACHE_DIR = "/share/yty/pretrained_models"
-elif machine_id == 66988331533420:
-    MODEL_CACHE_DIR = "/data/yty/pretrained_models"
-else:
-    raise ValueError(f"Unsupported machine id: {machine_id}")
+MODEL_CACHE_DIR = None
 
 # Pipeline parameters
 MODEL_PATH = "model_path"
@@ -48,7 +41,7 @@ PIPELINE_CONFIG = {
         PIPELINE: "WanPipeline",
         PIPELINE_MODULE: "diffusers",
         ATTENTION_HOOK: "WanAttentionHook",
-        ATTENTION_HOOK_MODULE: "diffusion_tracker.attention_hook.wan_attention_hook",
+        ATTENTION_HOOK_MODULE: "heft.attention_hook.wan_attention_hook",
         HOOKED_MODULE: "transformer",
         PIPELINE_KWARGS: {
             "torch_dtype": torch.bfloat16,
@@ -65,7 +58,7 @@ PIPELINE_CONFIG = {
         PIPELINE: "Cosmos2VideoToWorldPipeline",
         PIPELINE_MODULE: "diffusers",
         ATTENTION_HOOK: "CosmosAttentionHook",
-        ATTENTION_HOOK_MODULE: "diffusion_tracker.attention_hook.cosmos_attention_hook",
+        ATTENTION_HOOK_MODULE: "heft.attention_hook.cosmos_attention_hook",
         HOOKED_MODULE: "transformer",
         PIPELINE_KWARGS: {
             "torch_dtype": torch.bfloat16,
@@ -79,7 +72,7 @@ PIPELINE_CONFIG = {
         PIPELINE: "CogVideoXPipeline",
         PIPELINE_MODULE: "diffusers",
         ATTENTION_HOOK: "CogVideoXAttentionHook",
-        ATTENTION_HOOK_MODULE: "diffusion_tracker.attention_hook.cogvideox_attention_hook",
+        ATTENTION_HOOK_MODULE: "heft.attention_hook.cogvideox_attention_hook",
         HOOKED_MODULE: "transformer",
         PIPELINE_KWARGS: {
             "torch_dtype": torch.bfloat16,

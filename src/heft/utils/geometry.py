@@ -5,14 +5,6 @@ import torch.nn.functional as F
 import numpy as np
 
 
-# def get_grid(height, width, patch_size=1):
-#     start_coord = patch_size // 2
-#     x = torch.arange(start_coord, width, step=patch_size).float()
-#     y = torch.arange(start_coord, height, step=patch_size).float()
-#     X, Y = torch.meshgrid(x, y, indexing='xy')
-#     grid = torch.stack([X, Y], dim=-1)
-#     return grid
-
 def get_grid(height, width, patch_size=1):
     start_coord = patch_size // 2
     x = np.arange(start_coord, width, step=patch_size, dtype=np.float32)

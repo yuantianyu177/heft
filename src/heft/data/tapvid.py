@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import random
 from pathlib import Path
+from tqdm import tqdm
 from typing import Dict, Tuple, List, Optional, Union
 from ..utils.io import save_video
 
@@ -108,7 +109,7 @@ class TapVid:
         output_size: Tuple[int, int] = (480, 832),
         output_dir: str = "."
     ):
-        for i, name in enumerate(self.video_names):
+        for i, name in tqdm(enumerate(self.video_names), total=len(self.video_names), desc="Saving videos"):
             video_data = self.data[name]
             video = video_data['video']
             Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -214,7 +215,7 @@ class TapVidRGBStack:
         output_size: Tuple[int, int] = (480, 832),
         output_dir: str = "."
     ):
-        for i, video_data in enumerate(self.data):
+        for i, video_data in tqdm(enumerate(self.data), total=len(self.data), desc="Saving videos"):
             video = video_data['video']
             Path(output_dir).mkdir(parents=True, exist_ok=True)
             save_video(video, f"{output_dir}/{i:04d}.mp4", output_size=output_size)
@@ -332,7 +333,7 @@ class TapVidKinetics:
         output_size: Tuple[int, int] = (480, 832),
         output_dir: str = "."
     ):
-        for i, video_data in enumerate(self.data):
+        for i, video_data in tqdm(enumerate(self.data), total=len(self.data), desc="Saving videos"):
             video = preprocess_video_bytes(video_data['video'])
             Path(output_dir).mkdir(parents=True, exist_ok=True)
             save_video(video, f"{output_dir}/{i:04d}.mp4", output_size=output_size)

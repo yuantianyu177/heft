@@ -1,14 +1,11 @@
 import torch
-
 from einops import rearrange
 from torch import Tensor
 from pathlib import Path
 from typing import Literal, Optional, List
 from torch.nn import functional as F
-
 from .utils.io import load_video
 from .utils.geometry import sampler3d, get_grid
-
 
 
 class Tracker:
