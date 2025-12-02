@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "heft"
+version = "0.1.0"
+description = "Head and Frequency Tracker"
+authors = [
+    { name="Tianyu Yuan", email="yty@smail.nju.edu.cn" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "imageio",
+    "imageio-ffmpeg",
+    "opencv-python",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
