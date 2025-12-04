@@ -136,7 +136,7 @@ For dense tracking evaluation, use the dense tracking script:
 ./experiments/dense_tracking.sh
 ```
 
-This script performs dense tracking by generating trajectories for a dense grid of query points across video frames. **Important**: If you want to filter query points using a mask, place the mask files at `{task_dir}/mask/{frame_id}.png` in your feature save directory for **all frames**. Each mask should be a binary image where white pixels indicate valid regions for tracking. If no masks are provided, dense tracking will use all grid points.
+This script performs dense tracking by generating trajectories for a dense grid of query points across video frames. **Important**: If you want to filter query points using a mask, place the mask files at `{task_dir}/mask/{frame_id}.png` in your feature save directory for **all frames**. If no masks are provided, dense tracking will use all grid points. You can download DAVIS masks from [here](https://davischallenge.org/davis2017/code.html).
 
 ## License
 
