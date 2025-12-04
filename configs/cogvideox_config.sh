@@ -14,6 +14,6 @@ head=19
 
 dataset=davis
 dataset_dir=datasets/tapvid_davis
-feature_save_dir=/share/yty/tapvid_davis_cogvideox
+feature_save_dir=tapvid_davis_cogvideox
 resolution="480 720"
 rope_dim="16 24 24"

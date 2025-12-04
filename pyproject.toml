@@ -17,6 +17,7 @@ dependencies = [
     "imageio",
     "imageio-ffmpeg",
     "opencv-python",
+    "torchvision",
 ]
 
 [tool.setuptools.packages.find]

@@ -3,8 +3,6 @@
 set -eu
 source "configs/cosmos_config.sh"
 
-dataset=davis
-dataset_dir=tapvid_davis
 feature_save_dir=output/tapvid_davis_cosmos2
 track_save_dir=output/track
 eval_save_dir=output/eval
@@ -12,8 +10,7 @@ gpu="0 1 2 3 4 5 6 7"
 
 python scripts/get_trajectory.py \
     --data-dir "$feature_save_dir" \
-    --dataset-dir "$dataset_dir" \
-    --dataset $dataset \
+    --dense-query-points \
     --step "$step" \
     --layer "$layer" \
     --head "$head" \
@@ -35,8 +32,7 @@ python scripts/get_trajectory.py \
 
 python scripts/evaluate.py \
     --data-dir "$track_save_dir" \
-    --dataset-dir "$dataset_dir" \
-    --dataset $dataset \
+    --dense-query-points \
     --step "$step" \
     --layer "$layer" \
     --head "$head" \

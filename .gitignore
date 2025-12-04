@@ -2,6 +2,7 @@ diffusion-tracker/
 tapvid_davis/
 datasets/
 video_path.txt
+output/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
