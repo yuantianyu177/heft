@@ -13,9 +13,9 @@ Denoise to Track: Harnessing Video Diffusion Priors for Robust Correspondence</h
 <sup>&dagger;</sup>Co-corresponding author.
 
 
-<a href="https://arxiv.org/abs/2506.08015">
+<!-- <a href="https://arxiv.org/abs/2506.08015">
   <img src="https://img.shields.io/badge/2506.08015-arXiv-red" alt="arXiv">
-</a>&emsp;&emsp;&emsp;&emsp;
+</a>&emsp;&emsp;&emsp;&emsp; -->
 <a href="https://yuantianyu177.github.io/heft_page/">
   <img src="https://img.shields.io/badge/HeFT-project_page-blue" alt="Project Page">
 </a>
