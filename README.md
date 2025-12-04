@@ -22,7 +22,7 @@ Denoise to Track: Harnessing Video Diffusion Priors for Robust Correspondence</h
 </div>
 
 
-Please cite this paper if you find this repository useful.
+<!-- Please cite this paper if you find this repository useful.
 
 ```bash
 @article{yuan2025denoise,
@@ -31,7 +31,7 @@ Please cite this paper if you find this repository useful.
     journal   = {arXiv preprint arXiv:2506.08015},
     year      = {2025}
 }
-```
+``` -->
 
 ## Installation
 
