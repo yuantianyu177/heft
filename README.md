@@ -113,7 +113,7 @@ This script performs point tracking evaluation by:
 1. Extracting trajectories using diffusion model features via `get_trajectory.py`
 2. Evaluating tracking accuracy against ground truth via `evaluate.py`
 
-**Configurable parameters** (in `configs/cosmos_config.sh`):
+**Parameters**:
 - `step`: Diffusion step(s) to use for tracking
 - `layer`: Transformer layer(s) to extract features from
 - `head`: Attention head(s) to use (-1 for layer-level tracking)
@@ -136,7 +136,7 @@ For dense tracking evaluation, use the dense tracking script:
 ./experiments/dense_tracking.sh
 ```
 
-This script performs dense tracking by generating trajectories for a dense grid of query points across video frames. **Important**: If you want to filter query points using a mask, place the mask files at `{task_dir}/mask/{frame_id}.png` in your feature save directory for **all frames**. If no masks are provided, dense tracking will use all grid points. You can download DAVIS masks from [here](https://davischallenge.org/davis2017/code.html).
+This script performs dense tracking by generating trajectories for a dense grid of query points across video frames. If you want to filter query points using a mask, place the mask files at `{task_dir}/mask/{frame_id}.png` in your feature save directory for **all frames**. If no masks are provided, dense tracking will use all grid points. You can download DAVIS masks from [here](https://davischallenge.org/davis2017/code.html).
 
 ## License
 
