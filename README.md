@@ -13,25 +13,25 @@ Denoise to Track: Harnessing Video Diffusion Priors for Robust Correspondence</h
 <sup>&dagger;</sup>Co-corresponding author.
 
 
-<!-- <a href="https://arxiv.org/abs/2506.08015">
-  <img src="https://img.shields.io/badge/2506.08015-arXiv-red" alt="arXiv">
-</a>&emsp;&emsp;&emsp;&emsp; -->
+<a href="https://arxiv.org/abs/2512.04619">
+  <img src="https://img.shields.io/badge/2512.04619-arXiv-red" alt="arXiv">
+</a>&emsp;&emsp;&emsp;&emsp;
 <a href="https://yuantianyu177.github.io/heft_page/">
   <img src="https://img.shields.io/badge/HeFT-project_page-blue" alt="Project Page">
 </a>
 </div>
 
 
-<!-- Please cite this paper if you find this repository useful.
+Please cite this paper if you find this repository useful.
 
 ```bash
 @article{yuan2025denoise,
     title     = {Denoise to Track: Harnessing Video Diffusion Priors for Robust Correspondence},
-    author    = {Yuan, Tianyu and Yang, Yuanbo and Chen, Lin-Zhuo and Yao, Yao and Qian, Zhuzhong},
-    journal   = {arXiv preprint arXiv:2506.08015},
+    author    = {Tianyu Yuan and Yuanbo Yang and Lin-Zhuo Chen and Yao Yao and Zhuzhong Qian},
+    journal   = {arXiv preprint arXiv:2512.04619},
     year      = {2025}
 }
-``` -->
+```
 
 ## Installation
 
