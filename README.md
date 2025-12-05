@@ -8,7 +8,7 @@ Denoise to Track: Harnessing Video Diffusion Priors for Robust Correspondence</h
 [**Yao Yao**](https://yoyo000.github.io/)<sup>&dagger;1</sup>, 
 [**Zhuzhong Qian**](https://cs.nju.edu.cn/qzz/)<sup>&dagger;1</sup>,
 
-<sup>1</sup>NanJing University&emsp;&emsp;&emsp;&emsp;<sup>2</sup>ZheJiang University
+<sup>1</sup>Nanjing University&emsp;&emsp;&emsp;&emsp;<sup>2</sup>Zhejiang University
 
 <sup>&dagger;</sup>Co-corresponding author.
 
