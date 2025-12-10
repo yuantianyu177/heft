@@ -128,6 +128,25 @@ This script performs point tracking evaluation by:
 - `eval_save_dir`: Directory to save evaluation metrics
 - `feature_save_dir`: Directory containing precomputed diffusion features
 
+### Sparse Tracking
+
+For sparse tracking with custom query points, use the sparse tracking script:
+
+```bash
+./experiments/sparse_tracking.sh
+```
+
+This script performs sparse tracking by generating trajectories for user-specified query points loaded from a directory containing `.pt` files.
+
+**Parameters**:
+- `query_points_dir`: Path to the directory containing query points `.pt` files
+- Other parameters are the same as Point Tracking and Dense Tracking
+
+**Query Points Directory Format**:
+- The directory should contain `.pt` files named using 4-digit zero-padded format (e.g., `0000.pt`, `0001.pt`, `0002.pt`, ...)
+- Each `.pt` file should be a PyTorch tensor with shape `(n, 3)` where `n` is the number of query points for that video
+- Last dimension: `(x, y, t)` coordinates where `x` and `y` are pixel coordinates, and `t` is the query frame index
+
 ### Dense Tracking
 
 For dense tracking evaluation, use the dense tracking script:

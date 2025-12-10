@@ -3,6 +3,8 @@ tapvid_davis/
 datasets/
 video_path.txt
 output/
+test/
+test.pt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

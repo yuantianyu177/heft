@@ -23,6 +23,7 @@ def parse_args():
     parser.add_argument('--layer', type=int, nargs='+', required=True)
     parser.add_argument('--head', type=int, nargs='+', required=True)
     parser.add_argument('--dense-query-points', action='store_true')
+    parser.add_argument('--query-points-dir', type=str, default=None, help='Directory containing query points .pt files named as 04d.pt (e.g., 0000.pt, 0001.pt)')
     parser.add_argument('--query-feature-type', type=str, default='query', choices=feature_type)
     parser.add_argument('--target-feature-type', type=str, default='key', choices=feature_type)
     parser.add_argument('--update-feature-type', type=str, default=None)
@@ -55,6 +56,35 @@ def get_query_points_from_kinetics(dataset_dir: str, output_size: tuple = (480, 
     dataset = TapVidKinetics(root=dataset_dir)
     query_points_list = dataset.get_query_points(output_size=output_size)
     query_points_list = [torch.from_numpy(query_points) for query_points in query_points_list]
+    return query_points_list
+
+def get_query_points_from_dir(query_points_dir: str) -> list:
+    """Load query points from directory containing .pt files.
+    
+    Args:
+        query_points_dir: Directory containing .pt files named as 04d.pt (e.g., 0000.pt, 0001.pt).
+                         Each file should contain a tensor of shape (n, 3) where n is the number
+                         of query points, and the last dimension is (x, y, t)
+    
+    Returns:
+        List of tensors, each element is a tensor of shape (n, 3)
+    """
+    query_points_dir = Path(query_points_dir)
+    query_points_list = []
+    
+    # Find all .pt files matching the 04d.pt pattern and sort them numerically
+    pt_files = sorted(query_points_dir.glob("[0-9][0-9][0-9][0-9].pt"), key=lambda x: int(x.stem))
+    
+    if not pt_files:
+        raise ValueError(f"No .pt files found in {query_points_dir} matching pattern 04d.pt")
+    
+    # Load each file and append to list
+    for pt_file in pt_files:
+        query_points = torch.load(pt_file)  # (n, 3)
+        if query_points.dim() != 2 or query_points.shape[1] != 3:
+            raise ValueError(f"Query points file {pt_file} should have shape (n, 3), got {query_points.shape}")
+        query_points_list.append(query_points)
+    
     return query_points_list
 
 
@@ -137,7 +167,9 @@ def main():
     task_dirs = sorted([d for d in data_dir.iterdir() if d.is_dir()])
 
     # Get query points
-    if args.dense_query_points:
+    if args.query_points_dir is not None:
+        query_points_list = get_query_points_from_dir(args.query_points_dir)
+    elif args.dense_query_points:
         query_points_list = []
         for task_dir in task_dirs:
             query_points = get_dense_query_points_with_mask(task_dir, patch_size=32, resolution=args.resolution)
