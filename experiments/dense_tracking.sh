@@ -29,14 +29,3 @@ python scripts/get_trajectory.py \
     --output-dir "$track_save_dir" \
     --gpu $gpu
 
-
-python scripts/evaluate.py \
-    --data-dir "$track_save_dir" \
-    --dense-query-points \
-    --step "$step" \
-    --layer "$layer" \
-    --head "$head" \
-    --query-feature-type "$query_feature_type" \
-    --target-feature-type "$target_feature_type" \
-    --resolution $resolution \
-    --output-dir "$eval_save_dir" 
