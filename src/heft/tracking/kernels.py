@@ -102,3 +102,81 @@ def search_region_correlation(
         num_warps=4,  # pyright: ignore[reportCallIssue]
     )
     return output
+
+
+@triton.jit
+def _projected_search_kernel(
+    projection,
+    normalizer,
+    positions,
+    output,
+    grid_height: tl.constexpr,
+    grid_width: tl.constexpr,
+    frame_height: tl.constexpr,
+    frame_width: tl.constexpr,
+    extent: tl.constexpr,
+    side: tl.constexpr,
+    radius_squared: tl.constexpr,
+    block_pixels: tl.constexpr,
+):
+    point = tl.program_id(0)
+    offsets = tl.program_id(1) * block_pixels + tl.arange(0, block_pixels)
+    position_x = tl.load(positions + point * 2)
+    position_y = tl.load(positions + point * 2 + 1)
+    x = tl.floor(position_x).to(tl.int32) + offsets % side - extent
+    y = tl.floor(position_y).to(tl.int32) + offsets // side - extent
+    dx, dy = x - position_x, y - position_y
+    valid = (
+        (offsets < side * side)
+        & (x >= 0)
+        & (x < frame_width)
+        & (y >= 0)
+        & (y < frame_height)
+        & (dx * dx + dy * dy <= radius_squared)
+    )
+
+    source_x = tl.maximum((x + 0.5) * (grid_width / frame_width) - 0.5, 0.0)
+    source_y = tl.maximum((y + 0.5) * (grid_height / frame_height) - 0.5, 0.0)
+    left, top = source_x.to(tl.int32), source_y.to(tl.int32)
+    right = tl.minimum(left + 1, grid_width - 1)
+    bottom = tl.minimum(top + 1, grid_height - 1)
+    wx, wy = source_x - left, source_y - top
+    base = projection + point * grid_height * grid_width
+    top_left = tl.load(base + top * grid_width + left, mask=valid, other=0.0)
+    top_right = tl.load(base + top * grid_width + right, mask=valid, other=0.0)
+    bottom_left = tl.load(base + bottom * grid_width + left, mask=valid, other=0.0)
+    bottom_right = tl.load(base + bottom * grid_width + right, mask=valid, other=0.0)
+    upper = (1.0 - wx) * top_left + wx * top_right
+    lower = (1.0 - wx) * bottom_left + wx * bottom_right
+    numerator = (1.0 - wy) * upper + wy * lower
+    denominator = tl.load(normalizer + y * frame_width + x, mask=valid, other=1.0)
+    logits = tl.where(valid, tl.div_rn(numerator, denominator), -float("inf"))
+    tl.store(output + point * side * side + offsets, logits, mask=offsets < side * side)
+
+
+def projected_search_logits(
+    projection: Tensor, normalizer: Tensor, positions: Tensor, radius: float
+) -> Tensor:
+    """Interpolate scalar projections only at pixels within the search regions."""
+
+    points, grid_h, grid_w = projection.shape
+    frame_h, frame_w = normalizer.shape
+    extent = math.ceil(radius)
+    side = extent * 2 + 1
+    logits = projection.new_empty((points, side * side))
+    _projected_search_kernel[(points, triton.cdiv(side * side, 128))](
+        projection.contiguous(),
+        normalizer.contiguous(),
+        positions.contiguous(),
+        logits,
+        grid_h,
+        grid_w,
+        frame_h,
+        frame_w,
+        extent,
+        side,
+        radius * radius,
+        128,
+        num_warps=4,  # pyright: ignore[reportCallIssue]
+    )
+    return logits

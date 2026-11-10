@@ -17,6 +17,7 @@ class FeatureKind(StrEnum):
 
     QUERY = "query"
     KEY = "key"
+    VALUE = "value"
     HIDDEN_STATES = "hidden_states"
     ATTENTION_MAP = "attention_map"
 
@@ -26,6 +27,7 @@ class AttentionProcessorKind(StrEnum):
 
     WAN = "wan"
     COSMOS = "cosmos"
+    COSMOS3 = "cosmos3"
     COGVIDEOX = "cogvideox"
 
 
@@ -44,7 +46,12 @@ class CaptureSpec:
         step: int,
         layers: Iterable[int],
         heads: Iterable[int] | None = None,
-        features: Iterable[FeatureKind | str] = tuple(FeatureKind),
+        features: Iterable[FeatureKind | str] = (
+            FeatureKind.QUERY,
+            FeatureKind.KEY,
+            FeatureKind.HIDDEN_STATES,
+            FeatureKind.ATTENTION_MAP,
+        ),
     ) -> None:
         if not isinstance(step, int) or isinstance(step, bool):
             raise TypeError("step must be an integer")
@@ -186,6 +193,7 @@ class AttentionFeatureCapture:
         blocks: Sequence[Any],
         *,
         processor: AttentionProcessorKind | str,
+        attention_attribute: str = "attn1",
     ) -> CaptureSession:
         """Attach callbacks once and return their task-level session."""
 
@@ -198,9 +206,11 @@ class AttentionFeatureCapture:
                     f"layer {layer} is outside the model's {len(blocks)} blocks"
                 )
             block = blocks[layer]
-            if not hasattr(block, "attn1"):
-                raise TypeError(f"block at layer {layer} does not expose attn1")
-            attentions.append((layer, block.attn1))
+            if not hasattr(block, attention_attribute):
+                raise TypeError(
+                    f"block at layer {layer} does not expose {attention_attribute}"
+                )
+            attentions.append((layer, getattr(block, attention_attribute)))
 
         bindings: list[tuple[Any, object]] = []
         callbacks: list[_ProcessorCapture] = []
@@ -209,10 +219,10 @@ class AttentionFeatureCapture:
             bindings.append((attention, previous))
             target = partial(self._capture, layer=layer)
             callback: _ProcessorCapture
-            if processor in (AttentionProcessorKind.WAN, AttentionProcessorKind.COSMOS):
-                callback = _AlternatingConditionalCapture(target=target)
-            else:
+            if processor is AttentionProcessorKind.COGVIDEOX:
                 callback = _BatchedConditionalCapture(target=target)
+            else:
+                callback = _AlternatingConditionalCapture(target=target)
             setattr(attention, _CAPTURE_ATTRIBUTE, callback)
             callbacks.append(callback)
         return CaptureSession(
@@ -230,6 +240,7 @@ class AttentionFeatureCapture:
         query: Tensor,
         key: Tensor,
         hidden_states: Tensor,
+        value: Tensor | None = None,
         attention_mask: Tensor | None = None,
         is_causal: bool = False,
     ) -> None:
@@ -240,18 +251,27 @@ class AttentionFeatureCapture:
 
         _validate_feature_tensors(query, key, hidden_states)
         heads = self._selected_heads(query.shape[1])
+        descriptors = {
+            FeatureKind.QUERY: query,
+            FeatureKind.KEY: key,
+            FeatureKind.HIDDEN_STATES: hidden_states,
+        }
+        if FeatureKind.VALUE in self.spec.features:
+            if value is None:
+                raise ValueError(
+                    "the attention processor did not provide a value tensor"
+                )
+            if value.ndim != 4 or value.shape[:3] != key.shape[:3]:
+                raise ValueError(
+                    "value must share key's batch, head, and token dimensions"
+                )
+            descriptors[FeatureKind.VALUE] = value
 
         for kind in FeatureKind:
             if kind not in self.spec.features:
                 continue
             for head in heads:
-                if kind is FeatureKind.QUERY:
-                    tensor = query[:, head].detach()
-                elif kind is FeatureKind.KEY:
-                    tensor = key[:, head].detach()
-                elif kind is FeatureKind.HIDDEN_STATES:
-                    tensor = hidden_states[:, head].detach()
-                else:
+                if kind is FeatureKind.ATTENTION_MAP:
                     tensor = _get_attention_map(
                         query=query[:, head].detach(),
                         key=key[:, head].detach(),
@@ -260,6 +280,8 @@ class AttentionFeatureCapture:
                         ),
                         is_causal=is_causal,
                     )
+                else:
+                    tensor = descriptors[kind][:, head].detach()
                 self.sink(
                     CapturedFeature(
                         kind=kind,
@@ -296,6 +318,7 @@ class _ProcessorCapture(Protocol):
         query: Tensor,
         key: Tensor,
         hidden_states: Tensor,
+        value: Tensor | None = None,
         attention_mask: Tensor | None = None,
         is_causal: bool = False,
     ) -> None: ...
@@ -310,6 +333,7 @@ class _CaptureTarget(Protocol):
         query: Tensor,
         key: Tensor,
         hidden_states: Tensor,
+        value: Tensor | None = None,
         attention_mask: Tensor | None = None,
         is_causal: bool = False,
     ) -> None: ...
@@ -338,6 +362,7 @@ class _AlternatingConditionalCapture:
         query: Tensor,
         key: Tensor,
         hidden_states: Tensor,
+        value: Tensor | None = None,
         attention_mask: Tensor | None = None,
         is_causal: bool = False,
     ) -> None:
@@ -358,6 +383,7 @@ class _AlternatingConditionalCapture:
             query=query,
             key=key,
             hidden_states=hidden_states,
+            value=value,
             attention_mask=attention_mask,
             is_causal=is_causal,
         )
@@ -384,6 +410,7 @@ class _BatchedConditionalCapture:
         query: Tensor,
         key: Tensor,
         hidden_states: Tensor,
+        value: Tensor | None = None,
         attention_mask: Tensor | None = None,
         is_causal: bool = False,
     ) -> None:
@@ -410,6 +437,7 @@ class _BatchedConditionalCapture:
             query=query[conditional_start:],
             key=key[conditional_start:],
             hidden_states=hidden_states[conditional_start:],
+            value=value[conditional_start:] if value is not None else None,
             attention_mask=_conditional_attention_mask(
                 attention_mask,
                 batch_size=batch_size,

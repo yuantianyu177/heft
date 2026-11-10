@@ -45,6 +45,7 @@ class TorchTrackingExecutor:
             task.query_points,
             task.selection,
             video_id=task.video_id,
+            time_advance_frames=task.time_advance_frames,
         )
         return replace(result, gpu_id=self.gpu_id)
 

@@ -1,4 +1,5 @@
 import functools
+import glob
 import importlib
 import importlib.metadata
 import inspect
@@ -18,7 +19,7 @@ from collections import UserDict
 from contextlib import contextmanager
 from io import BytesIO, StringIO
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Set
 
 import numpy as np
 import PIL.Image
@@ -27,21 +28,25 @@ import requests
 from numpy.linalg import norm
 from packaging import version
 
-from .constants import DIFFUSERS_REQUEST_TIMEOUT
+from .constants import DIFFUSERS_REQUEST_TIMEOUT, USE_PEFT_BACKEND
+from .deprecation_utils import deprecate
 from .import_utils import (
     BACKENDS_MAPPING,
     is_accelerate_available,
     is_bitsandbytes_available,
     is_compel_available,
-    is_flax_available,
     is_gguf_available,
+    is_kernels_available,
     is_note_seq_available,
+    is_nvidia_modelopt_available,
     is_onnx_available,
     is_opencv_available,
     is_optimum_quanto_available,
     is_peft_available,
+    is_sdnq_available,
     is_timm_available,
     is_torch_available,
+    is_torch_neuronx_available,
     is_torch_version,
     is_torchao_available,
     is_torchsde_available,
@@ -64,15 +69,12 @@ else:
 global_rng = random.Random()
 
 logger = get_logger(__name__)
-
-_required_peft_version = is_peft_available() and version.parse(
-    version.parse(importlib.metadata.version("peft")).base_version
-) > version.parse("0.5")
-_required_transformers_version = is_transformers_available() and version.parse(
-    version.parse(importlib.metadata.version("transformers")).base_version
-) > version.parse("4.33")
-
-USE_PEFT_BACKEND = _required_peft_version and _required_transformers_version
+deprecate(
+    "diffusers.utils.testing_utils",
+    "1.0.0",
+    "diffusers.utils.testing_utils is deprecated and will be removed in a future version. "
+    "Determinism and device backend utilities have been moved to `diffusers.utils.torch_utils`. ",
+)
 BIG_GPU_MEMORY = int(os.getenv("BIG_GPU_MEMORY", 40))
 
 if is_torch_available():
@@ -104,6 +106,8 @@ if is_torch_available():
             torch_device = "cuda"
         elif torch.xpu.is_available():
             torch_device = "xpu"
+        elif is_torch_neuronx_available() and hasattr(torch, "neuron") and torch.neuron.is_available():
+            torch_device = torch.neuron.current_device()
         else:
             torch_device = "cpu"
         is_torch_higher_equal_than_1_12 = version.parse(
@@ -421,6 +425,10 @@ def require_big_accelerator(test_case):
     Decorator marking a test that requires a bigger hardware accelerator (24GB) for execution. Some example pipelines:
     Flux, SD3, Cog, etc.
     """
+    import pytest
+
+    test_case = pytest.mark.big_accelerator(test_case)
+
     if not is_torch_available():
         return unittest.skip("test requires PyTorch")(test_case)
 
@@ -452,13 +460,6 @@ def require_torch_accelerator_with_training(test_case):
 def skip_mps(test_case):
     """Decorator marking a test to skip if torch_device is 'mps'"""
     return unittest.skipUnless(torch_device != "mps", "test requires non 'mps' device")(test_case)
-
-
-def require_flax(test_case):
-    """
-    Decorator marking a test that requires JAX & Flax. These tests are skipped when one / both are not installed
-    """
-    return unittest.skipUnless(is_flax_available(), "test requires JAX & Flax")(test_case)
 
 
 def require_compel(test_case):
@@ -525,6 +526,13 @@ def require_quanto(test_case):
     Decorator marking a test that requires quanto. These tests are skipped when quanto isn't installed.
     """
     return unittest.skipUnless(is_optimum_quanto_available(), "test requires quanto")(test_case)
+
+
+def require_sdnq(test_case):
+    """
+    Decorator marking a test that requires sdnq. These tests are skipped when sdnq isn't installed.
+    """
+    return unittest.skipUnless(is_sdnq_available(), "test requires sdnq")(test_case)
 
 
 def require_accelerate(test_case):
@@ -629,6 +637,30 @@ def require_torchao_version_greater_or_equal(torchao_version):
     return decorator
 
 
+def require_modelopt_version_greater_or_equal(modelopt_version):
+    def decorator(test_case):
+        correct_nvidia_modelopt_version = is_nvidia_modelopt_available() and version.parse(
+            version.parse(importlib.metadata.version("nvidia-modelopt")).base_version
+        ) >= version.parse(modelopt_version)
+        return unittest.skipUnless(
+            correct_nvidia_modelopt_version, f"Test requires modelopt with version greater than {modelopt_version}."
+        )(test_case)
+
+    return decorator
+
+
+def require_kernels_version_greater_or_equal(kernels_version):
+    def decorator(test_case):
+        correct_kernels_version = is_kernels_available() and version.parse(
+            version.parse(importlib.metadata.version("kernels")).base_version
+        ) >= version.parse(kernels_version)
+        return unittest.skipUnless(
+            correct_kernels_version, f"Test requires kernels with version greater than {kernels_version}."
+        )(test_case)
+
+    return decorator
+
+
 def deprecate_after_peft_backend(test_case):
     """
     Decorator marking a test that will be skipped after PEFT backend
@@ -642,7 +674,7 @@ def get_python_version():
     return major, minor
 
 
-def load_numpy(arry: Union[str, np.ndarray], local_path: Optional[str] = None) -> np.ndarray:
+def load_numpy(arry: str | np.ndarray, local_path: str | None = None) -> np.ndarray:
     if isinstance(arry, str):
         if local_path is not None:
             # local_path can be passed to correct images of tests
@@ -668,14 +700,14 @@ def load_numpy(arry: Union[str, np.ndarray], local_path: Optional[str] = None) -
     return arry
 
 
-def load_pt(url: str, map_location: Optional[str] = None, weights_only: Optional[bool] = True):
+def load_pt(url: str, map_location: str | None = None, weights_only: bool | None = True):
     response = requests.get(url, timeout=DIFFUSERS_REQUEST_TIMEOUT)
     response.raise_for_status()
     arry = torch.load(BytesIO(response.content), map_location=map_location, weights_only=weights_only)
     return arry
 
 
-def load_image(image: Union[str, PIL.Image.Image]) -> PIL.Image.Image:
+def load_image(image: str | PIL.Image.Image) -> PIL.Image.Image:
     """
     Loads `image` to a PIL Image.
 
@@ -716,7 +748,7 @@ def preprocess_image(image: PIL.Image, batch_size: int):
     return 2.0 * image - 1.0
 
 
-def export_to_gif(image: List[PIL.Image.Image], output_gif_path: str = None) -> str:
+def export_to_gif(image: list[PIL.Image.Image], output_gif_path: str = None) -> str:
     if output_gif_path is None:
         output_gif_path = tempfile.NamedTemporaryFile(suffix=".gif").name
 
@@ -783,10 +815,9 @@ def export_to_ply(mesh, output_ply_path: str = None):
                 f.write(format.pack(*vertex))
 
         if faces is not None:
-            format = struct.Struct("<B3I")
             for tri in faces.tolist():
                 f.write(format.pack(len(tri), *tri))
-
+            format = struct.Struct("<B3I")
     return output_ply_path
 
 
@@ -810,7 +841,7 @@ def export_to_obj(mesh, output_obj_path: str = None):
         f.writelines("\n".join(combined_data))
 
 
-def export_to_video(video_frames: List[np.ndarray], output_video_path: str = None) -> str:
+def export_to_video(video_frames: list[np.ndarray], output_video_path: str = None) -> str:
     if is_opencv_available():
         import cv2
     else:
@@ -990,10 +1021,10 @@ def pytest_terminal_summary_main(tr, id):
     config.option.tbstyle = orig_tbstyle
 
 
-# Copied from https://github.com/huggingface/transformers/blob/000e52aec8850d3fe2f360adc6fd256e5b47fe4c/src/transformers/testing_utils.py#L1905
-def is_flaky(max_attempts: int = 5, wait_before_retry: Optional[float] = None, description: Optional[str] = None):
+# Adapted from https://github.com/huggingface/transformers/blob/000e52aec8850d3fe2f360adc6fd256e5b47fe4c/src/transformers/testing_utils.py#L1905
+def is_flaky(max_attempts: int = 5, wait_before_retry: float | None = None, description: str | None = None):
     """
-    To decorate flaky tests. They will be retried on failures.
+    To decorate flaky tests (methods or entire classes). They will be retried on failures.
 
     Args:
         max_attempts (`int`, *optional*, defaults to 5):
@@ -1005,22 +1036,33 @@ def is_flaky(max_attempts: int = 5, wait_before_retry: Optional[float] = None, d
             etc.)
     """
 
-    def decorator(test_func_ref):
-        @functools.wraps(test_func_ref)
+    def decorator(obj):
+        # If decorating a class, wrap each test method on it
+        if inspect.isclass(obj):
+            for attr_name, attr_value in list(obj.__dict__.items()):
+                if callable(attr_value) and attr_name.startswith("test"):
+                    # recursively decorate the method
+                    setattr(obj, attr_name, decorator(attr_value))
+            return obj
+
+        # Otherwise we're decorating a single test function / method
+        @functools.wraps(obj)
         def wrapper(*args, **kwargs):
             retry_count = 1
-
             while retry_count < max_attempts:
                 try:
-                    return test_func_ref(*args, **kwargs)
-
+                    return obj(*args, **kwargs)
                 except Exception as err:
-                    print(f"Test failed with {err} at try {retry_count}/{max_attempts}.", file=sys.stderr)
+                    msg = (
+                        f"[FLAKY] {description or obj.__name__!r} "
+                        f"failed on attempt {retry_count}/{max_attempts}: {err}"
+                    )
+                    print(msg, file=sys.stderr)
                     if wait_before_retry is not None:
                         time.sleep(wait_before_retry)
                     retry_count += 1
 
-            return test_func_ref(*args, **kwargs)
+            return obj(*args, **kwargs)
 
         return wrapper
 
@@ -1115,23 +1157,23 @@ def enable_full_determinism():
     Helper function for reproducible behavior during distributed training. See
     - https://pytorch.org/docs/stable/notes/randomness.html for pytorch
     """
-    #  Enable PyTorch deterministic mode. This potentially requires either the environment
-    #  variable 'CUDA_LAUNCH_BLOCKING' or 'CUBLAS_WORKSPACE_CONFIG' to be set,
-    # depending on the CUDA version, so we set them both here
-    os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
-    torch.use_deterministic_algorithms(True)
+    from .torch_utils import enable_full_determinism as _enable_full_determinism
 
-    # Enable CUDNN deterministic mode
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cuda.matmul.allow_tf32 = False
+    logger.warning(
+        "enable_full_determinism has been moved to diffusers.utils.torch_utils. "
+        "Importing from diffusers.utils.testing_utils is deprecated and will be removed in a future version."
+    )
+    return _enable_full_determinism()
 
 
 def disable_full_determinism():
-    os.environ["CUDA_LAUNCH_BLOCKING"] = "0"
-    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ""
-    torch.use_deterministic_algorithms(False)
+    from .torch_utils import disable_full_determinism as _disable_full_determinism
+
+    logger.warning(
+        "disable_full_determinism has been moved to diffusers.utils.torch_utils. "
+        "Importing from diffusers.utils.testing_utils is deprecated and will be removed in a future version."
+    )
+    return _disable_full_determinism()
 
 
 # Utils for custom and alternative accelerator devices
@@ -1237,7 +1279,7 @@ if is_torch_available():
 
 
 # This dispatches a defined function according to the accelerator from the function definitions.
-def _device_agnostic_dispatch(device: str, dispatch_table: Dict[str, Callable], *args, **kwargs):
+def _device_agnostic_dispatch(device: str, dispatch_table: dict[str, Callable], *args, **kwargs):
     if device not in dispatch_table:
         return dispatch_table["default"](*args, **kwargs)
 
@@ -1253,49 +1295,91 @@ def _device_agnostic_dispatch(device: str, dispatch_table: Dict[str, Callable], 
 
 # These are callables which automatically dispatch the function specific to the accelerator
 def backend_manual_seed(device: str, seed: int):
-    return _device_agnostic_dispatch(device, BACKEND_MANUAL_SEED, seed)
+    from .torch_utils import backend_manual_seed as _backend_manual_seed
+
+    logger.warning(
+        "backend_manual_seed has been moved to diffusers.utils.torch_utils. "
+        "diffusers.utils.testing_utils is deprecated and will be removed in a future version."
+    )
+    return _backend_manual_seed(device, seed)
 
 
 def backend_synchronize(device: str):
-    return _device_agnostic_dispatch(device, BACKEND_SYNCHRONIZE)
+    from .torch_utils import backend_synchronize as _backend_synchronize
+
+    logger.warning(
+        "backend_synchronize has been moved to diffusers.utils.torch_utils. "
+        "diffusers.utils.testing_utils is deprecated and will be removed in a future version."
+    )
+    return _backend_synchronize(device)
 
 
 def backend_empty_cache(device: str):
-    return _device_agnostic_dispatch(device, BACKEND_EMPTY_CACHE)
+    from .torch_utils import backend_empty_cache as _backend_empty_cache
+
+    logger.warning(
+        "backend_empty_cache has been moved to diffusers.utils.torch_utils. "
+        "diffusers.utils.testing_utils is deprecated and will be removed in a future version."
+    )
+    return _backend_empty_cache(device)
 
 
 def backend_device_count(device: str):
-    return _device_agnostic_dispatch(device, BACKEND_DEVICE_COUNT)
+    from .torch_utils import backend_device_count as _backend_device_count
+
+    logger.warning(
+        "backend_device_count has been moved to diffusers.utils.torch_utils. "
+        "diffusers.utils.testing_utils is deprecated and will be removed in a future version."
+    )
+    return _backend_device_count(device)
 
 
 def backend_reset_peak_memory_stats(device: str):
-    return _device_agnostic_dispatch(device, BACKEND_RESET_PEAK_MEMORY_STATS)
+    from .torch_utils import backend_reset_peak_memory_stats as _backend_reset_peak_memory_stats
+
+    logger.warning(
+        "backend_reset_peak_memory_stats has been moved to diffusers.utils.torch_utils. "
+        "diffusers.utils.testing_utils is deprecated and will be removed in a future version."
+    )
+    return _backend_reset_peak_memory_stats(device)
 
 
 def backend_reset_max_memory_allocated(device: str):
-    return _device_agnostic_dispatch(device, BACKEND_RESET_MAX_MEMORY_ALLOCATED)
+    from .torch_utils import backend_reset_max_memory_allocated as _backend_reset_max_memory_allocated
+
+    logger.warning(
+        "backend_reset_max_memory_allocated has been moved to diffusers.utils.torch_utils. "
+        "diffusers.utils.testing_utils is deprecated and will be removed in a future version."
+    )
+    return _backend_reset_max_memory_allocated(device)
 
 
 def backend_max_memory_allocated(device: str):
-    return _device_agnostic_dispatch(device, BACKEND_MAX_MEMORY_ALLOCATED)
+    from .torch_utils import backend_max_memory_allocated as _backend_max_memory_allocated
+
+    logger.warning(
+        "backend_max_memory_allocated has been moved to diffusers.utils.torch_utils. "
+        "diffusers.utils.testing_utils is deprecated and will be removed in a future version."
+    )
+    return _backend_max_memory_allocated(device)
 
 
 # These are callables which return boolean behaviour flags and can be used to specify some
 # device agnostic alternative where the feature is unsupported.
 def backend_supports_training(device: str):
-    if not is_torch_available():
-        return False
+    from .torch_utils import backend_supports_training as _backend_supports_training
 
-    if device not in BACKEND_SUPPORTS_TRAINING:
-        device = "default"
-
-    return BACKEND_SUPPORTS_TRAINING[device]
+    logger.warning(
+        "backend_supports_training has been moved to diffusers.utils.torch_utils. "
+        "diffusers.utils.testing_utils is deprecated and will be removed in a future version."
+    )
+    return _backend_supports_training(device)
 
 
 # Guard for when Torch is not available
 if is_torch_available():
     # Update device function dict mapping
-    def update_mapping_from_spec(device_fn_dict: Dict[str, Callable], attribute_name: str):
+    def update_mapping_from_spec(device_fn_dict: dict[str, Callable], attribute_name: str):
         try:
             # Try to import the function directly
             spec_fn = getattr(device_spec_module, attribute_name)
@@ -1344,7 +1428,7 @@ if is_torch_available():
 # Modified from https://github.com/huggingface/transformers/blob/cdfb018d0300fef3b07d9220f3efe9c2a9974662/src/transformers/testing_utils.py#L3090
 
 # Type definition of key used in `Expectations` class.
-DeviceProperties = Tuple[Union[str, None], Union[int, None]]
+DeviceProperties = tuple[str | None, int | None]
 
 
 @functools.lru_cache
@@ -1376,6 +1460,103 @@ if TYPE_CHECKING:
     DevicePropertiesUserDict = UserDict[DeviceProperties, Any]
 else:
     DevicePropertiesUserDict = UserDict
+
+if is_torch_available():
+    from diffusers.hooks._common import _GO_LC_SUPPORTED_PYTORCH_LAYERS
+    from diffusers.hooks.group_offloading import (
+        _GROUP_ID_LAZY_LEAF,
+        _compute_group_hash,
+        _find_parent_module_in_module_dict,
+        _gather_buffers_with_no_group_offloading_parent,
+        _gather_parameters_with_no_group_offloading_parent,
+    )
+
+    def _get_expected_safetensors_files(
+        module: torch.nn.Module,
+        offload_to_disk_path: str,
+        offload_type: str,
+        num_blocks_per_group: int | None = None,
+    ) -> Set[str]:
+        expected_files = set()
+
+        def get_hashed_filename(group_id: str) -> str:
+            short_hash = _compute_group_hash(group_id)
+            return os.path.join(offload_to_disk_path, f"group_{short_hash}.safetensors")
+
+        if offload_type == "block_level":
+            if num_blocks_per_group is None:
+                raise ValueError("num_blocks_per_group must be provided for 'block_level' offloading.")
+
+            # Handle groups of ModuleList and Sequential blocks
+            unmatched_modules = []
+            for name, submodule in module.named_children():
+                if not isinstance(submodule, (torch.nn.ModuleList, torch.nn.Sequential)):
+                    unmatched_modules.append(module)
+                    continue
+
+                for i in range(0, len(submodule), num_blocks_per_group):
+                    current_modules = submodule[i : i + num_blocks_per_group]
+                    if not current_modules:
+                        continue
+                    group_id = f"{name}_{i}_{i + len(current_modules) - 1}"
+                    expected_files.add(get_hashed_filename(group_id))
+
+            # Handle the group for unmatched top-level modules and parameters
+            for module in unmatched_modules:
+                expected_files.add(get_hashed_filename(f"{module.__class__.__name__}_unmatched_group"))
+
+        elif offload_type == "leaf_level":
+            # Handle leaf-level module groups
+            for name, submodule in module.named_modules():
+                if isinstance(submodule, _GO_LC_SUPPORTED_PYTORCH_LAYERS):
+                    # These groups will always have parameters, so a file is expected
+                    expected_files.add(get_hashed_filename(name))
+
+            # Handle groups for non-leaf parameters/buffers
+            modules_with_group_offloading = {
+                name for name, sm in module.named_modules() if isinstance(sm, _GO_LC_SUPPORTED_PYTORCH_LAYERS)
+            }
+            parameters = _gather_parameters_with_no_group_offloading_parent(module, modules_with_group_offloading)
+            buffers = _gather_buffers_with_no_group_offloading_parent(module, modules_with_group_offloading)
+
+            all_orphans = parameters + buffers
+            if all_orphans:
+                parent_to_tensors = {}
+                module_dict = dict(module.named_modules())
+                for tensor_name, _ in all_orphans:
+                    parent_name = _find_parent_module_in_module_dict(tensor_name, module_dict)
+                    if parent_name not in parent_to_tensors:
+                        parent_to_tensors[parent_name] = []
+                    parent_to_tensors[parent_name].append(tensor_name)
+
+                for parent_name in parent_to_tensors:
+                    # A file is expected for each parent that gathers orphaned tensors
+                    expected_files.add(get_hashed_filename(parent_name))
+            expected_files.add(get_hashed_filename(_GROUP_ID_LAZY_LEAF))
+
+        else:
+            raise ValueError(f"Unsupported offload_type: {offload_type}")
+
+        return expected_files
+
+    def _check_safetensors_serialization(
+        module: torch.nn.Module,
+        offload_to_disk_path: str,
+        offload_type: str,
+        num_blocks_per_group: int | None = None,
+    ) -> bool:
+        if not os.path.isdir(offload_to_disk_path):
+            return False, None, None
+
+        expected_files = _get_expected_safetensors_files(
+            module, offload_to_disk_path, offload_type, num_blocks_per_group
+        )
+        actual_files = set(glob.glob(os.path.join(offload_to_disk_path, "*.safetensors")))
+        missing_files = expected_files - actual_files
+        extra_files = actual_files - expected_files
+
+        is_correct = not missing_files and not extra_files
+        return is_correct, extra_files, missing_files
 
 
 class Expectations(DevicePropertiesUserDict):

@@ -12,8 +12,11 @@ import torch
 
 from heft import (
     COGVIDEOX,
+    COGVIDEOX_1_5_5B,
     COSMOS_2,
+    COSMOS_3_EDGE,
     WAN_2_1,
+    WAN_2_2_TI2V_5B,
     ExtractionConfig,
     ExtractionTask,
     FeatureExtractionPool,
@@ -93,8 +96,24 @@ def _extraction_config(
 
 
 def test_builtin_models_start_from_their_last_denoising_step() -> None:
-    for model in (WAN_2_1, COSMOS_2, COGVIDEOX):
+    for model in (
+        WAN_2_1,
+        WAN_2_2_TI2V_5B,
+        COSMOS_2,
+        COSMOS_3_EDGE,
+        COGVIDEOX,
+        COGVIDEOX_1_5_5B,
+    ):
         assert model.start_step == model.num_inference_steps - 1
+
+
+def test_new_backbones_pad_the_codec_and_patch_grids() -> None:
+    assert COGVIDEOX_1_5_5B.temporal_layout(25, input_video=True) == (29, 4)
+    assert COGVIDEOX_1_5_5B.feature_timing(input_video=True) == (8, 2.0)
+    assert COGVIDEOX_1_5_5B.temporal_layout(25, input_video=False) == (29, 4)
+    for model in (WAN_2_1, WAN_2_2_TI2V_5B, COGVIDEOX, COSMOS_2, COSMOS_3_EDGE):
+        assert model.temporal_layout(24, input_video=True) == (25, 7)
+        assert model.feature_timing(input_video=True) == (4, 0.0)
 
 
 def test_extraction_defaults_to_discarding_incomplete_tail() -> None:

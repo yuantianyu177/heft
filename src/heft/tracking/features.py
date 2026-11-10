@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import tempfile
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ class RopePairing(StrEnum):
 
     ADJACENT = "adjacent"
     SPLIT_HALF = "split_half"
+    INTERLEAVED_SPLIT_HALF = "interleaved_split_half"
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +40,11 @@ class RopeSpec:
         )
         if any(count <= 0 for count in pair_counts):
             raise ValueError("RoPE axis pair counts must be positive")
+        if self.pairing is RopePairing.INTERLEAVED_SPLIT_HALF and (
+            3 * self.height_pairs - 1 > self.num_pairs
+            or 3 * self.width_pairs > self.num_pairs
+        ):
+            raise ValueError("interleaved RoPE axes exceed the head width")
 
     @property
     def num_pairs(self) -> int:
@@ -56,17 +63,28 @@ class RopeSpec:
         if lower == 0.0 and upper == 1.0:
             return tuple(range(self.channels))
 
-        selected_pairs: list[int] = []
-        axis_start = 0
-        for count in (
-            self.temporal_pairs,
-            self.height_pairs,
-            self.width_pairs,
-        ):
-            selected_pairs.extend(
-                range(axis_start + int(count * lower), axis_start + int(count * upper))
+        if self.pairing is RopePairing.INTERLEAVED_SPLIT_HALF:
+            height = range(1, 3 * self.height_pairs, 3)
+            width = range(2, 3 * self.width_pairs, 3)
+            temporal = tuple(
+                pair
+                for pair in range(self.num_pairs)
+                if pair not in height and pair not in width
             )
-            axis_start += count
+            axes = (temporal, height, width)
+        else:
+            height_start = self.temporal_pairs
+            width_start = height_start + self.height_pairs
+            axes = (
+                range(height_start),
+                range(height_start, width_start),
+                range(width_start, self.num_pairs),
+            )
+        selected_pairs = sorted(
+            pair
+            for axis in axes
+            for pair in axis[int(len(axis) * lower) : int(len(axis) * upper)]
+        )
         if not selected_pairs:
             raise ValueError("frequency_range selects no RoPE channels")
 
@@ -83,12 +101,14 @@ class RopeSpec:
 
 @dataclass(frozen=True, slots=True)
 class FrameRange:
-    """The source-frame range represented by one extracted chunk."""
+    """A source-frame range and the optional feature grid relative to its start."""
 
     index: int
     start: int
     stop: int
     feature_frames: int
+    feature_frame_stride: int | None = None
+    first_feature_frame: float = 0.0
 
     def __post_init__(self) -> None:
         if self.index < 0:
@@ -97,6 +117,10 @@ class FrameRange:
             raise ValueError("chunk frame range must be non-empty and non-negative")
         if self.feature_frames <= 0:
             raise ValueError("feature_frames must be positive")
+        if self.feature_frame_stride is not None and self.feature_frame_stride <= 0:
+            raise ValueError("feature_frame_stride must be positive")
+        if not math.isfinite(self.first_feature_frame):
+            raise ValueError("first_feature_frame must be finite")
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,6 +139,7 @@ class FeatureVideo:
     heads: tuple[int, ...] | None
     feature_kinds: tuple[str, ...]
     rope: RopeSpec
+    temporal_mode: str | None = None
 
     def __post_init__(self) -> None:
         root = Path(self.root)
@@ -165,12 +190,15 @@ class FeatureVideo:
             "num_frames": self.num_frames,
             "frame_size": list(self.frame_size),
             "feature_size": list(self.feature_size),
+            "temporal_mode": self.temporal_mode,
             "chunks": [
                 {
                     "index": chunk.index,
                     "start": chunk.start,
                     "stop": chunk.stop,
                     "feature_frames": chunk.feature_frames,
+                    "feature_frame_stride": chunk.feature_frame_stride,
+                    "first_feature_frame": chunk.first_feature_frame,
                 }
                 for chunk in self.chunks
             ],
@@ -232,6 +260,7 @@ class FeatureVideo:
             heads=None if raw_heads is None else tuple(raw_heads),
             feature_kinds=tuple(capture["feature_kinds"]),
             rope=RopeSpec(**capture["rope"]),
+            temporal_mode=payload.get("temporal_mode"),
         )
 
 

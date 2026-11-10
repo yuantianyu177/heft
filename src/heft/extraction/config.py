@@ -10,7 +10,7 @@ from pathlib import Path
 import torch
 from torch import Tensor
 
-from heft.attn_hook import AttentionProcessorKind, CaptureSpec
+from heft.attn_hook import AttentionProcessorKind, CaptureSpec, FeatureKind
 from heft.tracking.features import RopePairing, RopeSpec
 
 
@@ -19,6 +19,16 @@ class TailFramePolicy(StrEnum):
 
     PAD = "pad"
     DISCARD = "discard"
+
+
+class TemporalMode(StrEnum):
+    """How an input video is encoded and mapped to RGB-frame descriptors."""
+
+    FRAMEWISE = "framewise"
+    STRIDE1 = "stride1"
+    PRE_DIT = "pre_dit"
+    POST_DIT = "post_dit"
+    FOUR_PHASE = "four_phase"
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +48,10 @@ class ModelConfig:
     rope: RopeSpec
     pipeline_module: str = "diffusers"
     dtype: torch.dtype = torch.bfloat16
+    attention_attribute: str = "attn1"
+    latent_frame_stride: int = 1
+    generated_latent_frame_stride: int | None = None
+    temporal_patch_size: int = 1
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "processor", AttentionProcessorKind(self.processor))
@@ -47,6 +61,15 @@ class ModelConfig:
             raise ValueError("start_step must be inside the denoising schedule")
         if self.guidance_scale <= 1:
             raise ValueError("guidance_scale must enable classifier-free guidance")
+        if self.latent_frame_stride <= 0 or self.temporal_patch_size <= 0:
+            raise ValueError(
+                "latent frame stride and temporal patch size must be positive"
+            )
+        if (
+            self.generated_latent_frame_stride is not None
+            and self.generated_latent_frame_stride <= 0
+        ):
+            raise ValueError("generated latent frame stride must be positive")
         if (
             len(self.feature_spatial_stride) != 2
             or min(self.feature_spatial_stride) <= 0
@@ -60,6 +83,46 @@ class ModelConfig:
         ):
             raise ValueError("resolution must be divisible by feature_spatial_stride")
 
+    def _latent_stride(self, input_video: bool, mode: TemporalMode) -> int:
+        if not input_video and self.generated_latent_frame_stride is not None:
+            return self.generated_latent_frame_stride
+        if input_video and mode is not TemporalMode.POST_DIT:
+            return 1
+        return self.latent_frame_stride
+
+    def temporal_layout(
+        self,
+        frames: int,
+        *,
+        input_video: bool,
+        temporal_mode: TemporalMode | str = TemporalMode.POST_DIT,
+    ) -> tuple[int, int]:
+        """Return padded RGB length and count of feature times covering the clip."""
+
+        mode = TemporalMode(temporal_mode)
+        if input_video and mode is TemporalMode.FOUR_PHASE:
+            return frames, frames
+        stride = self._latent_stride(input_video, mode)
+        patch = self.temporal_patch_size
+        latent_frames = (frames - 1 + stride - 1) // stride + 1
+        feature_frames = (latent_frames + patch - 1) // patch
+        return (feature_frames * patch - 1) * stride + 1, feature_frames
+
+    def feature_timing(
+        self,
+        *,
+        input_video: bool,
+        temporal_mode: TemporalMode | str = TemporalMode.POST_DIT,
+    ) -> tuple[int, float]:
+        """Return the spacing and first center of the feature grid in RGB frames."""
+
+        mode = TemporalMode(temporal_mode)
+        if input_video and mode is TemporalMode.FOUR_PHASE:
+            return 1, 0.0
+        stride = self._latent_stride(input_video, mode)
+        patch = self.temporal_patch_size
+        return stride * patch, stride * (patch - 1) / 2
+
 
 @dataclass(frozen=True, slots=True)
 class ExtractionConfig:
@@ -70,9 +133,19 @@ class ExtractionConfig:
     tail_policy: TailFramePolicy = TailFramePolicy.DISCARD
     max_pending_features: int = 8
     overwrite: bool = False
+    temporal_mode: TemporalMode | str = TemporalMode.POST_DIT
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "tail_policy", TailFramePolicy(self.tail_policy))
+        mode = TemporalMode(self.temporal_mode)
+        object.__setattr__(self, "temporal_mode", mode)
+        if (
+            mode is TemporalMode.FOUR_PHASE
+            and FeatureKind.ATTENTION_MAP in self.capture.features
+        ):
+            raise ValueError(
+                "four_phase supports token descriptors; attention_map spans independent contexts"
+            )
         if self.chunk_size <= 0:
             raise ValueError("chunk_size must be positive")
         if self.max_pending_features <= 0:
@@ -195,6 +268,7 @@ WAN_2_1 = ModelConfig(
     resolution=(480, 832),
     guidance_scale=5.0,
     feature_spatial_stride=(16, 16),
+    latent_frame_stride=4,
     rope=RopeSpec(
         pairing=RopePairing.ADJACENT,
         temporal_pairs=22,
@@ -214,6 +288,7 @@ COSMOS_2 = ModelConfig(
     resolution=(704, 1280),
     guidance_scale=7.0,
     feature_spatial_stride=(16, 16),
+    latent_frame_stride=4,
     rope=RopeSpec(
         pairing=RopePairing.SPLIT_HALF,
         temporal_pairs=22,
@@ -233,10 +308,63 @@ COGVIDEOX = ModelConfig(
     resolution=(480, 720),
     guidance_scale=6.0,
     feature_spatial_stride=(16, 16),
+    latent_frame_stride=4,
     rope=RopeSpec(
         pairing=RopePairing.ADJACENT,
         temporal_pairs=8,
         height_pairs=12,
         width_pairs=12,
+    ),
+)
+
+WAN_2_2_TI2V_5B = ModelConfig(
+    name="wan2.2-ti2v-5b",
+    model_id="Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+    pipeline_class="WanPipeline",
+    processor=AttentionProcessorKind.WAN,
+    blocks_attribute="blocks",
+    num_inference_steps=50,
+    start_step=49,
+    resolution=(480, 832),
+    guidance_scale=5.0,
+    feature_spatial_stride=(32, 32),
+    latent_frame_stride=4,
+    rope=WAN_2_1.rope,
+)
+
+COGVIDEOX_1_5_5B = ModelConfig(
+    name="cogvideox1.5-5b",
+    model_id="zai-org/CogVideoX1.5-5B",
+    pipeline_class="CogVideoXPipeline",
+    processor=AttentionProcessorKind.COGVIDEOX,
+    blocks_attribute="transformer_blocks",
+    num_inference_steps=50,
+    start_step=49,
+    resolution=(480, 832),
+    guidance_scale=6.0,
+    feature_spatial_stride=(16, 16),
+    latent_frame_stride=4,
+    temporal_patch_size=2,
+    rope=COGVIDEOX.rope,
+)
+
+COSMOS_3_EDGE = ModelConfig(
+    name="cosmos3-edge",
+    model_id="nvidia/Cosmos3-Edge",
+    pipeline_class="Cosmos3OmniPipeline",
+    processor=AttentionProcessorKind.COSMOS3,
+    blocks_attribute="layers",
+    attention_attribute="self_attn",
+    num_inference_steps=50,
+    start_step=49,
+    resolution=(480, 832),
+    guidance_scale=5.0,
+    feature_spatial_stride=(32, 32),
+    latent_frame_stride=4,
+    rope=RopeSpec(
+        pairing=RopePairing.INTERLEAVED_SPLIT_HALF,
+        temporal_pairs=24,
+        height_pairs=20,
+        width_pairs=20,
     ),
 )

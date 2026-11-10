@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.12.*"
 
 [[package]]
@@ -18,6 +18,28 @@ dependencies = [
 sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/8d/75/94cd5d389649578aca399e5aa822637eec18319a1dadc400ffe2f9a7493f/accelerate-1.14.0.tar.gz", hash = "sha256:41b9c4377a54e0b460a959b0defa1b736e4ca0a2373252d9a539964c2afe3c8d" }
 wheels = [
     { url = "https://mirror.nju.edu.cn/pypi/web/packages/a8/db/253133d7e7cb40d3af384bb2f5c0b4a2b7fdcffbc95c688cc67a20a3c103/accelerate-1.14.0-py3-none-any.whl", hash = "sha256:e94390c2863b873be18f623f9df48a0d8fe5eff13ea7f1a00092b0a7904888c6" },
+]
+
+[[package]]
+name = "annotated-doc"
+version = "0.0.5"
+source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/5a/8e/38aa427ed5402449e226975b649c5dc73ccadfefeb95e6aecb8f8ea4b6b6/annotated_doc-0.0.5.tar.gz", hash = "sha256:c7e58ce09192557605d8bbd92836d7e1d520ac9580096042c0bfd197efacf1bb" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/3e/30/e900b21425a860e195f32e37657aa1f7c7f2b1bfb26f03ca209b90933c06/annotated_doc-0.0.5-py3-none-any.whl", hash = "sha256:117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101" },
+]
+
+[[package]]
+name = "anyio"
+version = "4.16.0"
+source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
+dependencies = [
+    { name = "idna" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/a1/98/7e457a3b014976887a050561955c0b76e1e7e2d6e27b78ecef2ef80518f2/anyio-4.16.0.tar.gz", hash = "sha256:59bb03251907983d1603d27c3087ddb1e93299ea2163adcdba37899a4fb12ffb" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/a9/16/7757fb84c819accc7d7e9af5291b261e4abb8627ee040f99e7d35ef2457a/anyio-4.16.0-py3-none-any.whl", hash = "sha256:c66ae634e0b8228396b801741beb3294326d4b6102f7bba4041c0dfb58c29026" },
 ]
 
 [[package]]
@@ -49,6 +71,15 @@ wheels = [
     { url = "https://mirror.nju.edu.cn/pypi/web/packages/80/cc/f920afd1a23c58ccd53c1d36085a71893a4737ff5e66e0371efab6809850/charset_normalizer-3.4.9-cp312-cp312-win_amd64.whl", hash = "sha256:4b3dac63058cc36820b0dd072f89898604e2d39686fe05321729d00d8ac185a0" },
     { url = "https://mirror.nju.edu.cn/pypi/web/packages/f0/e6/0386d43a261ff4e4b30c5857af7df877254b46bec7b9d1b74b6bf969a90b/charset_normalizer-3.4.9-cp312-cp312-win_arm64.whl", hash = "sha256:78fa18e436a1a0e58dbd7e02fc4473f3f32cceb12df9dfca542d075961c307d2" },
     { url = "https://mirror.nju.edu.cn/pypi/web/packages/98/2b/f97f1c193fb855c345d678f5077d6926034db0722df74c8f057020e05a25/charset_normalizer-3.4.9-py3-none-any.whl", hash = "sha256:68e5f26a1ad57ded6d1cfb85331d1c1a195314756471d97758c48498bb4dcdf5" },
+]
+
+[[package]]
+name = "click"
+version = "8.5.1"
+source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/45/37/edbf1b0707709013c0cf2e8317e03d97ed29bf4cac709fe328904ae92a38/click-8.5.1.tar.gz", hash = "sha256:9bbfada76703fd1d784b83eea012e3e8c6a001a876543ef104fa56aaaeb072b4" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/31/7d/164b7ffc8624fe9efb4221bf9af485d5c1e41b9ae118045d2b6dc5457d8b/click-8.5.1-py3-none-any.whl", hash = "sha256:8bb5376d2006950386f8c6427613334a2acadc5f559cb80e638d00b4df957e37" },
 ]
 
 [[package]]
@@ -90,42 +121,42 @@ wheels = [
 
 [package.optional-dependencies]
 cublas = [
-    { name = "nvidia-cublas-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cublas-cu12" },
 ]
 cudart = [
-    { name = "nvidia-cuda-runtime-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cuda-runtime-cu12" },
 ]
 cufft = [
-    { name = "nvidia-cufft-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cufft-cu12" },
 ]
 cufile = [
-    { name = "nvidia-cufile-cu12", marker = "sys_platform == 'linux'" },
+    { name = "nvidia-cufile-cu12" },
 ]
 cupti = [
-    { name = "nvidia-cuda-cupti-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cuda-cupti-cu12" },
 ]
 curand = [
-    { name = "nvidia-curand-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-curand-cu12" },
 ]
 cusolver = [
-    { name = "nvidia-cusolver-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cusolver-cu12" },
 ]
 cusparse = [
-    { name = "nvidia-cusparse-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cusparse-cu12" },
 ]
 nvjitlink = [
-    { name = "nvidia-nvjitlink-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-nvjitlink-cu12" },
 ]
 nvrtc = [
-    { name = "nvidia-cuda-nvrtc-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cuda-nvrtc-cu12" },
 ]
 nvtx = [
-    { name = "nvidia-nvtx-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-nvtx-cu12" },
 ]
 
 [[package]]
 name = "diffusers"
-version = "0.34.0"
+version = "0.42.1"
 source = { editable = "diffusers" }
 dependencies = [
     { name = "filelock" },
@@ -148,47 +179,46 @@ requires-dist = [
     { name = "accelerate", marker = "extra == 'torchao'", specifier = ">=0.31.0" },
     { name = "accelerate", marker = "extra == 'training'", specifier = ">=0.31.0" },
     { name = "bitsandbytes", marker = "extra == 'bitsandbytes'", specifier = ">=0.43.3" },
-    { name = "compel", marker = "extra == 'dev'", specifier = "==0.1.8" },
-    { name = "compel", marker = "extra == 'test'", specifier = "==0.1.8" },
     { name = "datasets", marker = "extra == 'dev'" },
     { name = "datasets", marker = "extra == 'test'" },
     { name = "datasets", marker = "extra == 'training'" },
     { name = "filelock" },
-    { name = "flax", marker = "extra == 'dev'", specifier = ">=0.4.1" },
-    { name = "flax", marker = "extra == 'flax'", specifier = ">=0.4.1" },
+    { name = "flashpack", marker = "extra == 'flashpack'" },
+    { name = "ftfy", marker = "extra == 'dev'" },
+    { name = "ftfy", marker = "extra == 'test'" },
     { name = "gguf", marker = "extra == 'gguf'", specifier = ">=0.10.0" },
     { name = "gitpython", marker = "extra == 'dev'", specifier = "<3.1.19" },
     { name = "gitpython", marker = "extra == 'test'", specifier = "<3.1.19" },
     { name = "hf-doc-builder", marker = "extra == 'dev'", specifier = ">=0.3.0" },
     { name = "hf-doc-builder", marker = "extra == 'docs'", specifier = ">=0.3.0" },
     { name = "hf-doc-builder", marker = "extra == 'quality'", specifier = ">=0.3.0" },
-    { name = "huggingface-hub", specifier = ">=0.27.0" },
+    { name = "huggingface-hub", specifier = ">=1.32.0,<3.0" },
     { name = "importlib-metadata" },
     { name = "invisible-watermark", marker = "extra == 'dev'", specifier = ">=0.2.0" },
     { name = "invisible-watermark", marker = "extra == 'test'", specifier = ">=0.2.0" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.5.4" },
     { name = "isort", marker = "extra == 'quality'", specifier = ">=5.5.4" },
-    { name = "jax", marker = "extra == 'dev'", specifier = ">=0.4.1" },
-    { name = "jax", marker = "extra == 'flax'", specifier = ">=0.4.1" },
-    { name = "jaxlib", marker = "extra == 'dev'", specifier = ">=0.4.1" },
-    { name = "jaxlib", marker = "extra == 'flax'", specifier = ">=0.4.1" },
     { name = "jinja2", marker = "extra == 'dev'" },
     { name = "jinja2", marker = "extra == 'test'" },
     { name = "jinja2", marker = "extra == 'training'" },
-    { name = "k-diffusion", marker = "extra == 'dev'", specifier = ">=0.0.12" },
-    { name = "k-diffusion", marker = "extra == 'test'", specifier = ">=0.0.12" },
     { name = "librosa", marker = "extra == 'dev'" },
     { name = "librosa", marker = "extra == 'test'" },
+    { name = "llvmlite", marker = "extra == 'dev'", specifier = ">=0.40.0" },
+    { name = "llvmlite", marker = "extra == 'test'", specifier = ">=0.40.0" },
+    { name = "numba", marker = "extra == 'dev'", specifier = ">=0.57.0" },
+    { name = "numba", marker = "extra == 'test'", specifier = ">=0.57.0" },
     { name = "numpy" },
+    { name = "nvidia-modelopt", extras = ["hf"], marker = "extra == 'nvidia-modelopt'", specifier = ">=0.33.1" },
     { name = "optimum-quanto", marker = "extra == 'optimum-quanto'", specifier = ">=0.2.6" },
     { name = "parameterized", marker = "extra == 'dev'" },
     { name = "parameterized", marker = "extra == 'test'" },
-    { name = "peft", marker = "extra == 'dev'", specifier = ">=0.15.0" },
-    { name = "peft", marker = "extra == 'training'", specifier = ">=0.15.0" },
+    { name = "peft", marker = "extra == 'dev'", specifier = ">=0.17.0" },
+    { name = "peft", marker = "extra == 'training'", specifier = ">=0.17.0" },
     { name = "phonemizer", marker = "extra == 'dev'" },
     { name = "phonemizer", marker = "extra == 'test'" },
     { name = "pillow" },
     { name = "protobuf", marker = "extra == 'dev'", specifier = ">=3.20.3,<4" },
+    { name = "protobuf", marker = "extra == 'test'", specifier = ">=3.20.3,<4" },
     { name = "protobuf", marker = "extra == 'training'", specifier = ">=3.20.3,<4" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'test'" },
@@ -202,20 +232,25 @@ requires-dist = [
     { name = "requests-mock", marker = "extra == 'test'", specifier = "==1.10.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = "==0.9.10" },
     { name = "ruff", marker = "extra == 'quality'", specifier = "==0.9.10" },
-    { name = "safetensors", specifier = ">=0.3.1" },
-    { name = "safetensors", marker = "extra == 'dev'", specifier = ">=0.3.1" },
-    { name = "safetensors", marker = "extra == 'test'", specifier = ">=0.3.1" },
+    { name = "safetensors", specifier = ">=0.8.0" },
+    { name = "safetensors", marker = "extra == 'dev'", specifier = ">=0.8.0" },
+    { name = "safetensors", marker = "extra == 'test'", specifier = ">=0.8.0" },
     { name = "scipy", marker = "extra == 'dev'" },
     { name = "scipy", marker = "extra == 'test'" },
+    { name = "sdnq", marker = "extra == 'sdnq'", specifier = ">=0.2.2" },
     { name = "sentencepiece", marker = "extra == 'dev'", specifier = ">=0.1.91,!=0.1.92" },
     { name = "sentencepiece", marker = "extra == 'test'", specifier = ">=0.1.91,!=0.1.92" },
     { name = "tensorboard", marker = "extra == 'dev'" },
     { name = "tensorboard", marker = "extra == 'training'" },
     { name = "tiktoken", marker = "extra == 'dev'", specifier = ">=0.7.0" },
     { name = "tiktoken", marker = "extra == 'test'", specifier = ">=0.7.0" },
-    { name = "torch", marker = "extra == 'dev'", specifier = ">=1.4" },
-    { name = "torch", marker = "extra == 'torch'", specifier = ">=1.4" },
-    { name = "torchao", marker = "extra == 'torchao'", specifier = ">=0.7.0" },
+    { name = "timm", marker = "extra == 'dev'" },
+    { name = "timm", marker = "extra == 'training'" },
+    { name = "torch", marker = "extra == 'dev'", specifier = ">=2.6" },
+    { name = "torch", marker = "extra == 'torch'", specifier = ">=2.6" },
+    { name = "torchao", marker = "extra == 'torchao'", specifier = ">=0.15.0" },
+    { name = "torchsde", marker = "extra == 'dev'" },
+    { name = "torchsde", marker = "extra == 'test'" },
     { name = "torchvision", marker = "extra == 'dev'" },
     { name = "torchvision", marker = "extra == 'test'" },
     { name = "transformers", marker = "extra == 'dev'", specifier = ">=4.41.2" },
@@ -223,7 +258,7 @@ requires-dist = [
     { name = "urllib3", marker = "extra == 'dev'", specifier = "<=2.0.0" },
     { name = "urllib3", marker = "extra == 'quality'", specifier = "<=2.0.0" },
 ]
-provides-extras = ["quality", "docs", "training", "test", "torch", "bitsandbytes", "gguf", "optimum-quanto", "torchao", "flax", "dev"]
+provides-extras = ["quality", "docs", "training", "test", "torch", "bitsandbytes", "gguf", "optimum-quanto", "torchao", "nvidia-modelopt", "sdnq", "flashpack", "dev"]
 
 [[package]]
 name = "filelock"
@@ -253,6 +288,15 @@ dependencies = [
 sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/a5/d3/8650919bc3c7c6e90ee3fa7fd618bf373cbbe55dff043bd67353dbb20cd8/ftfy-6.3.1.tar.gz", hash = "sha256:9b3c3d90f84fb267fe64d375a07b7f8912d817cf86009ae134aa03e1819506ec" }
 wheels = [
     { url = "https://mirror.nju.edu.cn/pypi/web/packages/ab/6e/81d47999aebc1b155f81eca4477a616a70f238a2549848c38983f3c22a82/ftfy-6.3.1-py3-none-any.whl", hash = "sha256:7c70eb532015cd2f9adb53f101fb6c7945988d023a085d127d1573dc49dd0083" },
+]
+
+[[package]]
+name = "h11"
+version = "0.16.0"
+source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/01/ee/02a2c011bdab74c6fb3c75474d40b3052059d95df7e73351460c8588d963/h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86" },
 ]
 
 [[package]]
@@ -297,7 +341,7 @@ requires-dist = [
     { name = "sentencepiece", specifier = ">=0.2.2" },
     { name = "torch", specifier = "==2.11.0+cu128", index = "https://download.pytorch.org/whl/cu128" },
     { name = "torchvision", specifier = "==0.26.0+cu128", index = "https://download.pytorch.org/whl/cu128" },
-    { name = "transformers", specifier = ">=4.41.2,<5" },
+    { name = "transformers", specifier = ">=5.0,<6" },
     { name = "triton", marker = "sys_platform == 'linux'", specifier = "==3.6.0" },
 ]
 
@@ -310,37 +354,77 @@ dev = [
 
 [[package]]
 name = "hf-xet"
-version = "1.5.2"
+version = "1.8.0"
 source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
-sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/63/39/67be8d71f900d9a55761b6022821d6679fb56c64f1b6063d5af2c2606727/hf_xet-1.5.2.tar.gz", hash = "sha256:73044bd31bae33c984af832d19c752a0dffb67518fee9ddbd91d616e1101cf47" }
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/2f/18/d91c20f815df6cc496a5d0ad8db6d274dad5c0cfcd59babfa2440a9aba44/hf_xet-1.8.0.tar.gz", hash = "sha256:10ed23b51dacf7917d64f335c25048deb470efa755e9989b218fc0531386138e" }
 wheels = [
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/de/ba/2b70603c7552db82baeb2623e2336898304a17328845151be4fe1f48d420/hf_xet-1.5.2-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:f922b8f5fb84f1dd3d7ab7a1316354a1bca9b1c73ecfc19c76e51a2a49d29799" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/60/ac/b097a86a1e4a6098f3a79382643ab09d5733d87ccc864877ad1e12b49b70/hf_xet-1.5.2-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:045f84440c55cdeb659cf1a1dd48c77bcd0d2e93632e2fea8f2c3bdee79f38ed" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/d3/35/db860aa3a0780660324a506ad4b3d322ddc6ecbba4b9340aed0942cbf21c/hf_xet-1.5.2-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:db78c39c83d6279daddc98e2238f373ab8980685556d42472b4ec51abcf03e8c" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/af/6b/832dd980af4b0c3ae0660e309285f2ffcdff2faa38129390dbb47aa4a3f9/hf_xet-1.5.2-cp38-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:7db73c810500c54c6760be8c39d4b2e476974de85424c50063efc22fdda13025" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/9e/05/ae50f0d34e3254e6c3e208beb2519f6b8673016fc4b3643badaf6450d186/hf_xet-1.5.2-cp38-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:6395cfe3c9cbead4f16b31808b0e67eac428b66c656f856e99636adaddea878f" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/07/a9/c050bc2743a2bcd68928bfee157b08681667a164a24ec95fbfcfcd717e08/hf_xet-1.5.2-cp38-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:cde8cd167126bb6109b2ceb19b844433a4988643e8f3e01dd9dd0e4a34535097" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/e9/f8/68b01c5c2edb56ac9a67b3d076ffddcb90867abaee923923eb34e7a14e76/hf_xet-1.5.2-cp38-abi3-win_amd64.whl", hash = "sha256:ecf63d1cb69a9a7319910f8f83fcf9b46e7a32dfcf4b8f8eeddb55f647306e65" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/39/c6/988383e9dc17294d536fcbcd6fd16eed882e411ad16c954984a53e47b09c/hf_xet-1.5.2-cp38-abi3-win_arm64.whl", hash = "sha256:1da28519496eb7c8094c11e4d25509b4a468457a0302d58136099db2fd9a671d" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/97/74/d89d5235524bc14d8519e12ca8bc5204f45009ae83d63a410f52c29eb4a8/hf_xet-1.8.0-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:e00d8f60170cd3dd55d98306e41dbaf28b27ff1bcfefbfa84279d197221be83e" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/d4/f2/ef25e2085e92dcaeaa675331e443923aed2006f6fe2d984e15d8b8d40766/hf_xet-1.8.0-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:3e8934784425781f0f779b91044df441f3a7af4dab47375d7e3aeaecbb8eecb4" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/f8/1e/1e8ecc05ef034e9a95c18ed32d2ec07905a7cd2ca611a9d88e25ee1f4850/hf_xet-1.8.0-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:29dab7c904cd1914a0439c6e1306c12c7497c8bd32290fbe563ebf51ca4b6d6d" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/35/c4/127a1548df019ea4c80f06e685f263e146075143335a02e78a3c41dbc4eb/hf_xet-1.8.0-cp38-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:8800e3444770f2c630b361bc6d5c6ebb770b7830646cf632fbb79d0e5bbc9e7f" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/a5/d5/281cd82736c3e181e597588589d2204d3a5c388a464d4a2a8c546995bae9/hf_xet-1.8.0-cp38-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:a584a7b3268da62f23c3187cc7201ca01f7b610985a36b1b6119c66bccb0383c" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/48/77/886f09e91a5eadb054ce03b8855323cd2a72f20db76ab4119e0ecda65eef/hf_xet-1.8.0-cp38-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:1ebaf248c9bef8bb0c9d1d8d71db1fdf0cac14f922cc7a936a81adbf12eb5f01" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/97/4d/2c76a992b370ff77d0b5219275779f8c9a7dabb8ee649deb265dfed84d0f/hf_xet-1.8.0-cp38-abi3-win_amd64.whl", hash = "sha256:92188598dedc1e1f5609bd718d4db8687a6c89915553912571e2f587892eecec" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/87/91/fdb1454a43eff8011047d176ada2f0fb4926cf3d74b87357ff35793f6d98/hf_xet-1.8.0-cp38-abi3-win_arm64.whl", hash = "sha256:42b66fdc688eaa4ff3eb77dc9275e5a0f1258ecc9fdd083ddaf43bb49bec925b" },
+]
+
+[[package]]
+name = "httpcore2"
+version = "2.16.0"
+source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
+dependencies = [
+    { name = "h11" },
+    { name = "truststore" },
+]
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/c0/61/afa9d6b7452f9eca73f73d45324eb0bb52f098fd5e6049bf6b8263be9b4e/httpcore2-2.16.0.tar.gz", hash = "sha256:c72cd0413563b17e1cd8354677dff887466f8ec2551679759e93126534428643" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/af/c2/ce417c397afa5181f0e3c6ff01a4d01639414e1adef08730d97571297151/httpcore2-2.16.0-py3-none-any.whl", hash = "sha256:5c4358319f2602d984ad93182c9fee5160f22e9da7babdda870a5e7c4e2dc34f" },
+]
+
+[[package]]
+name = "httpx2"
+version = "2.16.0"
+source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
+dependencies = [
+    { name = "anyio", marker = "sys_platform != 'emscripten'" },
+    { name = "httpcore2", marker = "sys_platform != 'emscripten'" },
+    { name = "httpx2-jsfetch", marker = "sys_platform == 'emscripten'" },
+    { name = "idna" },
+    { name = "truststore", marker = "sys_platform != 'emscripten'" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/43/73/5ca2cedf5e4e50423d1c258877865a6b62793633b561c58499f8aeb33b7e/httpx2-2.16.0.tar.gz", hash = "sha256:0d54c98128e8f2ff7fbbde0fca8c359e5f032edeaaaac443cdb7f31f685bcd7f" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/7b/3d/2e4bc4fd1ef9770871669adb348d612a6e4786b303a23f9935b81c48dd60/httpx2-2.16.0-py3-none-any.whl", hash = "sha256:fd2c5d7909e8d86fe92d53020c310ca0e4e431b838c207c5754b9bbf0308d49a" },
+]
+
+[[package]]
+name = "httpx2-jsfetch"
+version = "1.0"
+source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/cd/c4/0e5636363151a2a1795e0a77617168b9ca438e1748ec05fc9b5687f93d64/httpx2_jsfetch-1.0.tar.gz", hash = "sha256:70a0e3eabfef7cce5ad9c629f7d01ca05e418f586646f4ddf14782e4c1454c60" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/9b/43/832f631d32e4f1211caa2ba368317739fe71f0b8530e4c9d15dc454bac2a/httpx2_jsfetch-1.0-py3-none-any.whl", hash = "sha256:cb916b707601e69a07721aabc8f3f6659be3a6893bc1ff5c6f9e02241df2da32" },
 ]
 
 [[package]]
 name = "huggingface-hub"
-version = "0.36.2"
+version = "2.4.0"
 source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
 dependencies = [
+    { name = "click" },
     { name = "filelock" },
     { name = "fsspec" },
-    { name = "hf-xet", marker = "platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'" },
+    { name = "hf-xet", marker = "platform_machine == 'AMD64' or platform_machine == 'ARM64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'" },
+    { name = "httpx2" },
     { name = "packaging" },
     { name = "pyyaml" },
-    { name = "requests" },
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/7c/b7/8cb61d2eece5fb05a83271da168186721c450eb74e3c31f7ef3169fa475b/huggingface_hub-0.36.2.tar.gz", hash = "sha256:1934304d2fb224f8afa3b87007d58501acfda9215b334eed53072dd5e815ff7a" }
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/b5/3b/2fcef1eabe52aec90fc8cd253cc154da1d02a446d7bbcdec59b4a51d4be7/huggingface_hub-2.4.0.tar.gz", hash = "sha256:13a6158b9e3393d9d3f248ce99074d50c2a0a1449fb9d8e2f710751e2084c188" }
 wheels = [
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/a8/af/48ac8483240de756d2438c380746e7130d1c6f75802ef22f3c6d49982787/huggingface_hub-0.36.2-py3-none-any.whl", hash = "sha256:48f0c8eac16145dfce371e9d2d7772854a4f591bcb56c9cf548accf531d54270" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/d4/55/ff47f1b082ecf5f43f4bc1e3b932d68eead171dabbbd1a92666c686301d7/huggingface_hub-2.4.0-py3-none-any.whl", hash = "sha256:42ecfd93ede47bdd333daebbf66a32d7bfe2e18752754fe4d2d4f98a0179d801" },
 ]
 
 [[package]]
@@ -386,6 +470,18 @@ wheels = [
 ]
 
 [[package]]
+name = "markdown-it-py"
+version = "4.2.0"
+source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
+dependencies = [
+    { name = "mdurl" },
+]
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/06/ff/7841249c247aa650a76b9ee4bbaeae59370dc8bfd2f6c01f3630c35eb134/markdown_it_py-4.2.0.tar.gz", hash = "sha256:04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/b3/81/4da04ced5a082363ecfa159c010d200ecbd959ae410c10c0264a38cac0f5/markdown_it_py-4.2.0-py3-none-any.whl", hash = "sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a" },
+]
+
+[[package]]
 name = "markupsafe"
 version = "3.0.3"
 source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
@@ -402,6 +498,15 @@ wheels = [
     { url = "https://mirror.nju.edu.cn/pypi/web/packages/2f/e1/78ee7a023dac597a5825441ebd17170785a9dab23de95d2c7508ade94e0e/markupsafe-3.0.3-cp312-cp312-win32.whl", hash = "sha256:d88b440e37a16e651bda4c7c2b930eb586fd15ca7406cb39e211fcff3bf3017d" },
     { url = "https://mirror.nju.edu.cn/pypi/web/packages/aa/5b/bec5aa9bbbb2c946ca2733ef9c4ca91c91b6a24580193e891b5f7dbe8e1e/markupsafe-3.0.3-cp312-cp312-win_amd64.whl", hash = "sha256:26a5784ded40c9e318cfc2bdb30fe164bdb8665ded9cd64d500a34fb42067b1c" },
     { url = "https://mirror.nju.edu.cn/pypi/web/packages/e5/f1/216fc1bbfd74011693a4fd837e7026152e89c4bcf3e77b6692fba9923123/markupsafe-3.0.3-cp312-cp312-win_arm64.whl", hash = "sha256:35add3b638a5d900e807944a078b51922212fb3dedb01633a8defc4b01a3c85f" },
+]
+
+[[package]]
+name = "mdurl"
+version = "0.1.2"
+source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8" },
 ]
 
 [[package]]
@@ -789,6 +894,19 @@ wheels = [
 ]
 
 [[package]]
+name = "rich"
+version = "15.0.0"
+source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
+dependencies = [
+    { name = "markdown-it-py" },
+    { name = "pygments" },
+]
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/c0/8f/0722ca900cc807c13a6a0c696dacf35430f72e0ec571c4275d2371fca3e9/rich-15.0.0.tar.gz", hash = "sha256:edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/82/3b/64d4899d73f91ba49a8c18a8ff3f0ea8f1c1d75481760df8c68ef5235bf5/rich-15.0.0-py3-none-any.whl", hash = "sha256:33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb" },
+]
+
+[[package]]
 name = "ruff"
 version = "0.16.0"
 source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
@@ -862,6 +980,15 @@ wheels = [
 ]
 
 [[package]]
+name = "shellingham"
+version = "1.5.4"
+source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/58/15/8b3609fd3830ef7b27b655beb4b4e9c62313a4e8da8c676e142cc210d58e/shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686" },
+]
+
+[[package]]
 name = "sympy"
 version = "1.14.0"
 source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
@@ -875,28 +1002,29 @@ wheels = [
 
 [[package]]
 name = "tokenizers"
-version = "0.22.2"
+version = "0.23.3"
 source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
 dependencies = [
     { name = "huggingface-hub" },
 ]
-sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/73/6f/f80cfef4a312e1fb34baf7d85c72d4411afde10978d4657f8cdd811d3ccc/tokenizers-0.22.2.tar.gz", hash = "sha256:473b83b915e547aa366d1eee11806deaf419e17be16310ac0a14077f1e28f917" }
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/e0/7c/2cabb2174e772636683008f2c5621949b645da7d303c596589e84516a184/tokenizers-0.23.3.tar.gz", hash = "sha256:cded33237c77caeef62944d32aa9a7ef42bdce2b3497e18d137e072a8c4be438" }
 wheels = [
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/92/97/5dbfabf04c7e348e655e907ed27913e03db0923abb5dfdd120d7b25630e1/tokenizers-0.22.2-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:544dd704ae7238755d790de45ba8da072e9af3eea688f698b137915ae959281c" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/2e/47/174dca0502ef88b28f1c9e06b73ce33500eedfac7a7692108aec220464e7/tokenizers-0.22.2-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:1e418a55456beedca4621dbab65a318981467a2b188e982a23e117f115ce5001" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/d6/84/7990e799f1309a8b87af6b948f31edaa12a3ed22d11b352eaf4f4b2e5753/tokenizers-0.22.2-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2249487018adec45d6e3554c71d46eb39fa8ea67156c640f7513eb26f318cec7" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/78/59/09d0d9ba94dcd5f4f1368d4858d24546b4bdc0231c2354aa31d6199f0399/tokenizers-0.22.2-cp39-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:25b85325d0815e86e0bac263506dd114578953b7b53d7de09a6485e4a160a7dd" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/47/50/b3ebb4243e7160bda8d34b731e54dd8ab8b133e50775872e7a434e524c28/tokenizers-0.22.2-cp39-abi3-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:bfb88f22a209ff7b40a576d5324bf8286b519d7358663db21d6246fb17eea2d5" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/e0/fa/89f4cb9e08df770b57adb96f8cbb7e22695a4cb6c2bd5f0c4f0ebcf33b66/tokenizers-0.22.2-cp39-abi3-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:1c774b1276f71e1ef716e5486f21e76333464f47bece56bbd554485982a9e03e" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/64/04/ca2363f0bfbe3b3d36e95bf67e56a4c88c8e3362b658e616d1ac185d47f2/tokenizers-0.22.2-cp39-abi3-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:df6c4265b289083bf710dff49bc51ef252f9d5be33a45ee2bed151114a56207b" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/2e/76/932be4b50ef6ccedf9d3c6639b056a967a86258c6d9200643f01269211ca/tokenizers-0.22.2-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:369cc9fc8cc10cb24143873a0d95438bb8ee257bb80c71989e3ee290e8d72c67" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/1d/28/5f9f5a4cc211b69e89420980e483831bcc29dade307955cc9dc858a40f01/tokenizers-0.22.2-cp39-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:29c30b83d8dcd061078b05ae0cb94d3c710555fbb44861139f9f83dcca3dc3e4" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/6c/fb/66e2da4704d6aadebf8cb39f1d6d1957df667ab24cff2326b77cda0dcb85/tokenizers-0.22.2-cp39-abi3-musllinux_1_2_armv7l.whl", hash = "sha256:37ae80a28c1d3265bb1f22464c856bd23c02a05bb211e56d0c5301a435be6c1a" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/16/04/fed398b05caa87ce9b1a1bb5166645e38196081b225059a6edaff6440fac/tokenizers-0.22.2-cp39-abi3-musllinux_1_2_i686.whl", hash = "sha256:791135ee325f2336f498590eb2f11dc5c295232f288e75c99a36c5dbce63088a" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/05/a1/d62dfe7376beaaf1394917e0f8e93ee5f67fea8fcf4107501db35996586b/tokenizers-0.22.2-cp39-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:38337540fbbddff8e999d59970f3c6f35a82de10053206a7562f1ea02d046fa5" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/fd/18/a545c4ea42af3df6effd7d13d250ba77a0a86fb20393143bbb9a92e434d4/tokenizers-0.22.2-cp39-abi3-win32.whl", hash = "sha256:a6bf3f88c554a2b653af81f3204491c818ae2ac6fbc09e76ef4773351292bc92" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/65/71/0670843133a43d43070abeb1949abfdef12a86d490bea9cd9e18e37c5ff7/tokenizers-0.22.2-cp39-abi3-win_amd64.whl", hash = "sha256:c9ea31edff2968b44a88f97d784c2f16dc0729b8b143ed004699ebca91f05c48" },
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/72/f4/0de46cfa12cdcbcd464cc59fde36912af405696f687e53a091fb432f694c/tokenizers-0.22.2-cp39-abi3-win_arm64.whl", hash = "sha256:9ce725d22864a1e965217204946f830c37876eee3b2ba6fc6255e8e903d5fcbc" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/aa/2e/4ce5b9716f26e526eff6b0502ebed4ea8d7161f03b3c77617c9f25528e97/tokenizers-0.23.3-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:9d2b5c97daf61688c2ad1803ca851800feaba50fb68d5821779e9ea5880d968c" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/b2/72/01e49f032bb346e5aaf06c10c74fe8aeec847173adbadd66eb7c53054bf2/tokenizers-0.23.3-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:68649e97d5b43c44c031d8d848874a6eecae8f8fe40ea989aa777a5a83aca716" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/15/fc/ae987741829b1cd547668c4c94be732ae3eefd1d74344e64c3d2ca714acd/tokenizers-0.23.3-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ec82e80e65a862275b97c3d90b7a523df8d9519ee48aeb4e9625b2cc909274e0" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/1c/da/cc8f6c030afaf05fbddc608158fbb761dca46913cbeba6b112e59fc82e2a/tokenizers-0.23.3-cp310-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:c64a0713180ff16829d4e7f39a658b77ea11443af4e1aa46523692943c9b1414" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/ec/f1/256f78d1365fa2cd3ea6db716883d74667c8cbb6a21f15fa5b89a773cdc2/tokenizers-0.23.3-cp310-abi3-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:ddedfd4b3b4be6be24ff6ca645c4a37fddfd305f6f3e354c54cf10b715c48215" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/60/93/eee007ac2fcbf4ecfce7fbc354826cf3611f56bdb886f3e91b1f7dd06b8f/tokenizers-0.23.3-cp310-abi3-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:2a89614730d7b80940a5d2ed9320e1ec8add5a745c6151d8d05071b7215505b6" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/bf/f9/0c96c4739461fce9d8d865b416728081bf6230022d7163bd6244f35f4b31/tokenizers-0.23.3-cp310-abi3-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:e88646b8580c5ad7f4361477f1298e9cc01771a1ee9aecfe32c47b8ff614cc38" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/3a/40/6706b82693715581457c6d5423eaa7faae576bb0526c5738a57085eb4449/tokenizers-0.23.3-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:376851d22bcf9d650a5c3090bb83e6cf9e895fbf0595369fa4cd43c1f69b5f87" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/fe/0c/85946de40e25b7364b8f1bcf56def129069acd5bb364b7c86a32919e1a23/tokenizers-0.23.3-cp310-abi3-manylinux_2_31_riscv64.whl", hash = "sha256:bf501c40b72d2d5c8623620210430e9cac1ce47a46e45b34107b70a1557d46b0" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/f1/6b/8d615d92cad1d511ca5ab188d1c7c167f0b3d295cc0d96207f9f82d486d8/tokenizers-0.23.3-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:114e2b55ed177179d59f4ab98200a4471e11e78f9e4b5a922d146740f96fcf52" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/c9/7d/a922e37ddd58d1b463bbc2ad08120c8f59c60b814cd353519a116b24f8ba/tokenizers-0.23.3-cp310-abi3-musllinux_1_2_armv7l.whl", hash = "sha256:d3407fb7b9c4d75dd68850ffd7180bc0a5d2dbaf0762d888e612f31fec3f9c6b" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/4b/06/5d3f506a86ae0699a0e4ea05c05978f9aee169ef2c1d844e68c971cf8194/tokenizers-0.23.3-cp310-abi3-musllinux_1_2_i686.whl", hash = "sha256:84513ef0aeb8bf8f4ea11a2e8a7ac163ec5288aa115e649a59b470ac5c3107df" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/26/e5/065625317690ea3548d834dad81f48ea1fd32e4964610e658e195d7fe28e/tokenizers-0.23.3-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:e05ab7baf7f47b406a95fea6f3b0a484b2ddcd9e1d14b68844c457eb755085a3" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/77/4e/babede85d0d19f5e3deeef0063e01848141329934d3d77c31b5cab5ac2b4/tokenizers-0.23.3-cp310-abi3-win32.whl", hash = "sha256:1ebf28794e7e4954e20a7f70fbea410b2d1f0418f7dbbca97ca384fcfef38c25" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/d1/6c/24f074c9a0efb98e61b20aafe6b2641922d5db24e447d5d6daffd9e17555/tokenizers-0.23.3-cp310-abi3-win_amd64.whl", hash = "sha256:1f0823bb00c5fdc98e487354d54dd55a03848d61a1a0bf29a68c77f24f3b26c3" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/53/77/a476b6f73a661c11d113a342d2326b91506cf2285f0995d1212a6bb2022d/tokenizers-0.23.3-cp310-abi3-win_arm64.whl", hash = "sha256:7e48734d2de9260d86f03ab056d2cfeeff3869f61dbd49aaa15a2793b5f3458b" },
 ]
 
 [[package]]
@@ -954,23 +1082,22 @@ wheels = [
 
 [[package]]
 name = "transformers"
-version = "4.57.6"
+version = "5.22.2"
 source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
 dependencies = [
-    { name = "filelock" },
     { name = "huggingface-hub" },
     { name = "numpy" },
     { name = "packaging" },
     { name = "pyyaml" },
     { name = "regex" },
-    { name = "requests" },
     { name = "safetensors" },
     { name = "tokenizers" },
     { name = "tqdm" },
+    { name = "typer" },
 ]
-sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/c4/35/67252acc1b929dc88b6602e8c4a982e64f31e733b804c14bc24b47da35e6/transformers-4.57.6.tar.gz", hash = "sha256:55e44126ece9dc0a291521b7e5492b572e6ef2766338a610b9ab5afbb70689d3" }
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/42/54/b040ac523bad74f303d032505e3464cf4794f9d51defc8981ec66001936e/transformers-5.22.2.tar.gz", hash = "sha256:55f57e5cbd7c0b500b7a706daa0ecd76567b56ca139e6e02ef0bba0437e3a763" }
 wheels = [
-    { url = "https://mirror.nju.edu.cn/pypi/web/packages/03/b8/e484ef633af3887baeeb4b6ad12743363af7cce68ae51e938e00aaa0529d/transformers-4.57.6-py3-none-any.whl", hash = "sha256:4c9e9de11333ddfe5114bc872c9f370509198acf0b87a832a0ab9458e2bd0550" },
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/ff/bb/cc0b27a3000ddcf4903d3a26983c8b4c9a36050bbaf05675f353e8bcb08c/transformers-5.22.2-py3-none-any.whl", hash = "sha256:829c2820aff91730b8ec45a4b8ff4be07f586a140b68a9073998b36fa35297dc" },
 ]
 
 [[package]]
@@ -980,6 +1107,30 @@ source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
 wheels = [
     { url = "https://mirror.nju.edu.cn/pypi/web/packages/17/5d/08201db32823bdf77a0e2b9039540080b2e5c23a20706ddba942924ebcd6/triton-3.6.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:374f52c11a711fd062b4bfbb201fd9ac0a5febd28a96fb41b4a0f51dde3157f4" },
     { url = "https://mirror.nju.edu.cn/pypi/web/packages/ab/a8/cdf8b3e4c98132f965f88c2313a4b493266832ad47fb52f23d14d4f86bb5/triton-3.6.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:74caf5e34b66d9f3a429af689c1c7128daba1d8208df60e81106b115c00d6fca" },
+]
+
+[[package]]
+name = "truststore"
+version = "0.10.5"
+source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/ee/9f/c5201d42a484c061e528825fc8e2d565f5abd50a4ced6fb7d29c4ec99b2b/truststore-0.10.5.tar.gz", hash = "sha256:30d36967ccaded5cbb38d602c433f53600036c79d502f4533a49b60a03bbefcd" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/51/e9/3a7820be2bb0fe53b6bc9c3be26d3d1158004e4c3ab953aa6840b955b1e9/truststore-0.10.5-py3-none-any.whl", hash = "sha256:9aaaedaefaf06d8b206278cf8b5012bc897f485a874503501e12d776df78951c" },
+]
+
+[[package]]
+name = "typer"
+version = "0.28.0"
+source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple/" }
+dependencies = [
+    { name = "annotated-doc" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "rich" },
+    { name = "shellingham" },
+]
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/ad/8f/21021859316f44289101638dc74d82e13d722d8533e4b8708a3ab7c8461a/typer-0.28.0.tar.gz", hash = "sha256:69ab84ef79fd601cff071bbd2566d855ecadfd93adbc4b3360b9924359bdd857" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/19/98/8ef60c7cd773dbab9d276a4c7bff505913a25b61acd8a9ef01ceeb70f554/typer-0.28.0-py3-none-any.whl", hash = "sha256:afd18929180b706c5e9a239f53c3c8136903553c0c2d460598bbaa924191d4ab" },
 ]
 
 [[package]]

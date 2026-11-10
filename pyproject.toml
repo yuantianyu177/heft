@@ -7,7 +7,7 @@ license = "MIT"
 requires-python = "==3.12.*"
 dependencies = [
     "accelerate>=1.14.0",
-    "diffusers",
+    "diffusers==0.42.1",
     "ftfy>=6.3.1",
     "numpy>=2.4.3",
     "opencv-python-headless>=5.0.0.93",
@@ -18,7 +18,7 @@ dependencies = [
     "sentencepiece>=0.2.2",
     "torch==2.11.0+cu128",
     "torchvision==0.26.0+cu128",
-    "transformers>=4.41.2,<5",
+    "transformers>=5.0,<6",
     "triton==3.6.0; platform_system == 'Linux'",
 ]
 

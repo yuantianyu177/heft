@@ -22,6 +22,7 @@ from .config import (
     ExtractionTask,
     ModelConfig,
     TailFramePolicy,
+    TemporalMode,
 )
 from .worker import DiffusersChunkExecutorFactory
 
@@ -117,6 +118,11 @@ class FeatureExtractionPool:
         if self._closed:
             raise RuntimeError("feature extraction pool is closed")
         task_list = tuple(tasks)
+        mode = TemporalMode(self.config.temporal_mode)
+        if mode is not TemporalMode.POST_DIT and any(
+            task.input_video is None for task in task_list
+        ):
+            raise ValueError(f"{mode.value} requires an input video")
         jobs = _plan_chunks(
             task_list,
             self.config.chunk_size,
@@ -153,6 +159,10 @@ class FeatureExtractionPool:
                 self.model.resolution[1] // self.model.feature_spatial_stride[1],
             )
             spatial_tokens = feature_size[0] * feature_size[1]
+            feature_stride, first_feature_frame = self.model.feature_timing(
+                input_video=task.input_video is not None,
+                temporal_mode=mode,
+            )
             FeatureVideo(
                 root=result.output_dir,
                 name=result.task_name,
@@ -166,6 +176,8 @@ class FeatureExtractionPool:
                         start=chunk.start_frame,
                         stop=chunk.end_frame,
                         feature_frames=_feature_frames(chunk, spatial_tokens),
+                        feature_frame_stride=feature_stride,
+                        first_feature_frame=first_feature_frame,
                     )
                     for chunk in result.chunks
                 ),
@@ -176,6 +188,7 @@ class FeatureExtractionPool:
                     feature.value for feature in self.config.capture.features
                 ),
                 rope=self.model.rope,
+                temporal_mode=mode.value,
             ).write(overwrite=self.config.overwrite)
         return results
 

@@ -62,9 +62,26 @@ class TrackingOps:
         self.offsets, self.offset_weights = self._make_update_neighborhood()
 
     @staticmethod
-    def interpolate_time(volume: Tensor, frames: int) -> Tensor:
+    def interpolate_time(
+        volume: Tensor,
+        frames: int,
+        *,
+        feature_frame_stride: int | None = None,
+        first_feature_frame: float = 0.0,
+        first_rgb_frame: int = 0,
+    ) -> Tensor:
         """Interpolate only the temporal axis of a ``[T,C,H,W]`` volume."""
 
+        if feature_frame_stride is not None:
+            times = torch.arange(frames, device=volume.device, dtype=torch.float32)
+            indices = (
+                times + first_rgb_frame - first_feature_frame
+            ) / feature_frame_stride
+            indices = indices.clamp(0, volume.shape[0] - 1)
+            left = indices.floor().long()
+            right = indices.ceil().long()
+            weight = (indices - left).to(volume.dtype).view(-1, 1, 1, 1)
+            return torch.lerp(volume[left], volume[right], weight)
         if volume.shape[0] == frames:
             return volume
         interpolated = F.interpolate(
@@ -209,6 +226,9 @@ class TrackingOps:
         logits = search_region_correlation(
             query, normalized_target, positions, self.config.search_radius
         )
+        return self._expect_search_regions(logits, positions)
+
+    def _expect_search_regions(self, logits: Tensor, positions: Tensor) -> Tensor:
         extent = math.ceil(self.config.search_radius)
         side = extent * 2 + 1
         argmax = logits.argmax(dim=1)
@@ -220,7 +240,7 @@ class TrackingOps:
             ),
             dim=1,
         )
-        output = torch.zeros(query.shape[0], 2, device=self.device)
+        output = torch.zeros(logits.shape[0], 2, device=self.device)
         matched = logits.isfinite().any(dim=1).nonzero(as_tuple=False).flatten()
         if matched.numel() > 0:
             output[matched] = self._search_region_expectation(
@@ -326,7 +346,9 @@ class TrackingOps:
         return torch.stack((x, y), dim=1)
 
     def _predict_global(self, query: Tensor, normalized_target: Tensor) -> Tensor:
-        logits = query @ normalized_target.flatten(1)
+        return self._expect_global(query @ normalized_target.flatten(1))
+
+    def _expect_global(self, logits: Tensor) -> Tensor:
         argmax = logits.argmax(dim=1)
         centers = torch.stack(
             (

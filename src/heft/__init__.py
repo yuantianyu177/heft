@@ -9,8 +9,11 @@ from .evaluation import (
 )
 from .extraction import (
     COGVIDEOX,
+    COGVIDEOX_1_5_5B,
     COSMOS_2,
+    COSMOS_3_EDGE,
     WAN_2_1,
+    WAN_2_2_TI2V_5B,
     ChunkResult,
     ExtractionConfig,
     ExtractionResult,
@@ -19,6 +22,7 @@ from .extraction import (
     FeatureExtractor,
     ModelConfig,
     TailFramePolicy,
+    TemporalMode,
     extract_feature,
     extract_features,
 )
@@ -44,8 +48,11 @@ from .tracking import (
 
 __all__ = [
     "COGVIDEOX",
+    "COGVIDEOX_1_5_5B",
     "COSMOS_2",
+    "COSMOS_3_EDGE",
     "WAN_2_1",
+    "WAN_2_2_TI2V_5B",
     "AnnotationQueries",
     "ChunkResult",
     "EvaluationConfig",
@@ -68,6 +75,7 @@ __all__ = [
     "RopePairing",
     "RopeSpec",
     "TailFramePolicy",
+    "TemporalMode",
     "TrackingConfig",
     "TrackingPool",
     "TrackingResult",

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -20,14 +20,15 @@ import torch.nn.functional as F
 
 from ...configuration_utils import ConfigMixin, register_to_config
 from ...loaders import PeftAdapterMixin
-from ...utils import USE_PEFT_BACKEND, logging, scale_lora_layers, unscale_lora_layers
+from ...utils import apply_lora_scale, logging
+from ...utils.torch_utils import maybe_allow_in_graph
 from ..attention import FeedForward
 from ..attention_processor import Attention
 from ..cache_utils import CacheMixin
 from ..embeddings import CogView3CombinedTimestepSizeEmbeddings
 from ..modeling_outputs import Transformer2DModelOutput
 from ..modeling_utils import ModelMixin
-from ..normalization import AdaLayerNormContinuous
+from ..normalization import LayerNorm, RMSNorm
 
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
@@ -72,7 +73,7 @@ class CogView4AdaLayerNormZero(nn.Module):
 
     def forward(
         self, hidden_states: torch.Tensor, encoder_hidden_states: torch.Tensor, temb: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         dtype = hidden_states.dtype
         norm_hidden_states = self.norm(hidden_states).to(dtype=dtype)
         norm_encoder_hidden_states = self.norm_context(encoder_hidden_states).to(dtype=dtype)
@@ -128,9 +129,9 @@ class CogView4AttnProcessor:
         attn: Attention,
         hidden_states: torch.Tensor,
         encoder_hidden_states: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
-        image_rotary_emb: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        attention_mask: torch.Tensor | None = None,
+        image_rotary_emb: tuple[torch.Tensor, torch.Tensor] | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         dtype = encoder_hidden_states.dtype
 
         batch_size, text_seq_length, embed_dim = encoder_hidden_states.shape
@@ -210,14 +211,12 @@ class CogView4TrainingAttnProcessor:
         attn: Attention,
         hidden_states: torch.Tensor,
         encoder_hidden_states: torch.Tensor,
-        latent_attn_mask: Optional[torch.Tensor] = None,
-        text_attn_mask: Optional[torch.Tensor] = None,
-        batch_flag: Optional[torch.Tensor] = None,
-        image_rotary_emb: Optional[
-            Union[Tuple[torch.Tensor, torch.Tensor], List[Tuple[torch.Tensor, torch.Tensor]]]
-        ] = None,
+        latent_attn_mask: torch.Tensor | None = None,
+        text_attn_mask: torch.Tensor | None = None,
+        batch_flag: torch.Tensor | None = None,
+        image_rotary_emb: tuple[torch.Tensor, torch.Tensor] | list[tuple[torch.Tensor, torch.Tensor]] | None = None,
         **kwargs,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             attn (`Attention`):
@@ -237,10 +236,10 @@ class CogView4TrainingAttnProcessor:
                 Values from 0 to n-1 indicating which samples belong to the same batch. Samples with the same
                 batch_flag are packed together. Example: [0, 1, 1, 2, 2] means sample 0 forms batch0, samples 1-2 form
                 batch1, and samples 3-4 form batch2. If None, no packing is used.
-            image_rotary_emb (`Tuple[torch.Tensor, torch.Tensor]` or `list[Tuple[torch.Tensor, torch.Tensor]]`, *optional*):
+            image_rotary_emb (`tuple[torch.Tensor, torch.Tensor]` or `list[tuple[torch.Tensor, torch.Tensor]]`, *optional*):
                 The rotary embedding for the image part of the input.
         Returns:
-            `Tuple[torch.Tensor, torch.Tensor]`: The processed hidden states for both image and text streams.
+            `tuple[torch.Tensor, torch.Tensor]`: The processed hidden states for both image and text streams.
         """
 
         # Get dimensions and device info
@@ -453,6 +452,7 @@ class CogView4TrainingAttnProcessor:
         return hidden_states, encoder_hidden_states
 
 
+@maybe_allow_in_graph
 class CogView4TransformerBlock(nn.Module):
     def __init__(
         self,
@@ -486,13 +486,11 @@ class CogView4TransformerBlock(nn.Module):
         self,
         hidden_states: torch.Tensor,
         encoder_hidden_states: torch.Tensor,
-        temb: Optional[torch.Tensor] = None,
-        image_rotary_emb: Optional[
-            Union[Tuple[torch.Tensor, torch.Tensor], List[Tuple[torch.Tensor, torch.Tensor]]]
-        ] = None,
-        attention_mask: Optional[Dict[str, torch.Tensor]] = None,
-        attention_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> torch.Tensor:
+        temb: torch.Tensor | None = None,
+        image_rotary_emb: tuple[torch.Tensor, torch.Tensor] | list[tuple[torch.Tensor, torch.Tensor]] | None = None,
+        attention_mask: dict[str, torch.Tensor] | None = None,
+        attention_kwargs: dict[str, Any] | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         # 1. Timestep conditioning
         (
             norm_hidden_states,
@@ -535,7 +533,7 @@ class CogView4TransformerBlock(nn.Module):
 
 
 class CogView4RotaryPosEmbed(nn.Module):
-    def __init__(self, dim: int, patch_size: int, rope_axes_dim: Tuple[int, int], theta: float = 10000.0) -> None:
+    def __init__(self, dim: int, patch_size: int, rope_axes_dim: tuple[int, int], theta: float = 10000.0) -> None:
         super().__init__()
 
         self.dim = dim
@@ -543,7 +541,7 @@ class CogView4RotaryPosEmbed(nn.Module):
         self.rope_axes_dim = rope_axes_dim
         self.theta = theta
 
-    def forward(self, hidden_states: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, hidden_states: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         batch_size, num_channels, height, width = hidden_states.shape
         height, width = height // self.patch_size, width // self.patch_size
 
@@ -580,6 +578,38 @@ class CogView4RotaryPosEmbed(nn.Module):
         freqs = torch.cat([freqs, freqs], dim=-1)  # [height, width, dim]
         freqs = freqs.reshape(height * width, -1)
         return (freqs.cos(), freqs.sin())
+
+
+class CogView4AdaLayerNormContinuous(nn.Module):
+    """
+    CogView4-only final AdaLN: LN(x) -> Linear(cond) -> chunk -> affine. Matches Megatron: **no activation** before the
+    Linear on conditioning embedding.
+    """
+
+    def __init__(
+        self,
+        embedding_dim: int,
+        conditioning_embedding_dim: int,
+        elementwise_affine: bool = True,
+        eps: float = 1e-5,
+        bias: bool = True,
+        norm_type: str = "layer_norm",
+    ):
+        super().__init__()
+        self.linear = nn.Linear(conditioning_embedding_dim, embedding_dim * 2, bias=bias)
+        if norm_type == "layer_norm":
+            self.norm = LayerNorm(embedding_dim, eps, elementwise_affine, bias)
+        elif norm_type == "rms_norm":
+            self.norm = RMSNorm(embedding_dim, eps, elementwise_affine)
+        else:
+            raise ValueError(f"unknown norm_type {norm_type}")
+
+    def forward(self, x: torch.Tensor, conditioning_embedding: torch.Tensor) -> torch.Tensor:
+        # *** NO SiLU here ***
+        emb = self.linear(conditioning_embedding.to(x.dtype))
+        scale, shift = torch.chunk(emb, 2, dim=1)
+        x = self.norm(x) * (1 + scale)[:, None, :] + shift[:, None, :]
+        return x
 
 
 class CogView4Transformer2DModel(ModelMixin, ConfigMixin, PeftAdapterMixin, CacheMixin):
@@ -632,7 +662,7 @@ class CogView4Transformer2DModel(ModelMixin, ConfigMixin, PeftAdapterMixin, Cach
         condition_dim: int = 256,
         pos_embed_max_size: int = 128,
         sample_size: int = 128,
-        rope_axes_dim: Tuple[int, int] = (256, 256),
+        rope_axes_dim: tuple[int, int] = (256, 256),
     ):
         super().__init__()
 
@@ -664,11 +694,12 @@ class CogView4Transformer2DModel(ModelMixin, ConfigMixin, PeftAdapterMixin, Cach
         )
 
         # 4. Output projection
-        self.norm_out = AdaLayerNormContinuous(inner_dim, time_embed_dim, elementwise_affine=False)
+        self.norm_out = CogView4AdaLayerNormContinuous(inner_dim, time_embed_dim, elementwise_affine=False)
         self.proj_out = nn.Linear(inner_dim, patch_size * patch_size * out_channels, bias=True)
 
         self.gradient_checkpointing = False
 
+    @apply_lora_scale("attention_kwargs")
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -677,28 +708,43 @@ class CogView4Transformer2DModel(ModelMixin, ConfigMixin, PeftAdapterMixin, Cach
         original_size: torch.Tensor,
         target_size: torch.Tensor,
         crop_coords: torch.Tensor,
-        attention_kwargs: Optional[Dict[str, Any]] = None,
+        attention_kwargs: dict[str, Any] | None = None,
         return_dict: bool = True,
-        attention_mask: Optional[torch.Tensor] = None,
-        image_rotary_emb: Optional[
-            Union[Tuple[torch.Tensor, torch.Tensor], List[Tuple[torch.Tensor, torch.Tensor]]]
-        ] = None,
-    ) -> Union[torch.Tensor, Transformer2DModelOutput]:
-        if attention_kwargs is not None:
-            attention_kwargs = attention_kwargs.copy()
-            lora_scale = attention_kwargs.pop("scale", 1.0)
-        else:
-            lora_scale = 1.0
+        attention_mask: torch.Tensor | None = None,
+        image_rotary_emb: tuple[torch.Tensor, torch.Tensor] | list[tuple[torch.Tensor, torch.Tensor]] | None = None,
+    ) -> tuple[torch.Tensor] | Transformer2DModelOutput:
+        """
+        The [`CogView4Transformer2DModel`] forward method.
 
-        if USE_PEFT_BACKEND:
-            # weight the lora layers by setting `lora_scale` for each PEFT layer
-            scale_lora_layers(self, lora_scale)
-        else:
-            if attention_kwargs is not None and attention_kwargs.get("scale", None) is not None:
-                logger.warning(
-                    "Passing `scale` via `attention_kwargs` when not using the PEFT backend is ineffective."
-                )
+        Args:
+            hidden_states (`torch.Tensor` of shape `(batch_size, in_channels, height, width)`):
+                Input `hidden_states`.
+            encoder_hidden_states (`torch.Tensor` of shape `(batch_size, sequence_len, embed_dims)`):
+                Conditional embeddings (embeddings computed from the input conditions such as prompts) to use.
+            timestep (`torch.LongTensor`):
+                Used to indicate denoising step.
+            original_size (`torch.Tensor`):
+                Original image size conditioning.
+            target_size (`torch.Tensor`):
+                Target image size conditioning.
+            crop_coords (`torch.Tensor`):
+                Crop coordinates conditioning.
+            attention_kwargs (`dict`, *optional*):
+                A kwargs dictionary that if specified is passed along to the `AttentionProcessor` as defined under
+                `self.processor` in
+                [diffusers.models.attention_processor](https://github.com/huggingface/diffusers/blob/main/src/diffusers/models/attention_processor.py).
+            return_dict (`bool`, *optional*, defaults to `True`):
+                Whether or not to return a [`~models.transformer_2d.Transformer2DModelOutput`] instead of a plain
+                tuple.
+            attention_mask (`torch.Tensor`, *optional*):
+                Mask applied to attention scores.
+            image_rotary_emb (`tuple` of `torch.Tensor`, *optional*):
+                Pre-computed rotary positional embeddings.
 
+        Returns:
+            If `return_dict` is True, an [`~models.transformer_2d.Transformer2DModelOutput`] is returned, otherwise a
+            `tuple` where the first element is the sample tensor.
+        """
         batch_size, num_channels, height, width = hidden_states.shape
 
         # 1. RoPE
@@ -744,10 +790,6 @@ class CogView4Transformer2DModel(ModelMixin, ConfigMixin, PeftAdapterMixin, Cach
         # 5. Unpatchify
         hidden_states = hidden_states.reshape(batch_size, post_patch_height, post_patch_width, -1, p, p)
         output = hidden_states.permute(0, 3, 1, 4, 2, 5).flatten(4, 5).flatten(2, 3)
-
-        if USE_PEFT_BACKEND:
-            # remove `lora_scale` from each PEFT layer
-            unscale_lora_layers(self, lora_scale)
 
         if not return_dict:
             return (output,)

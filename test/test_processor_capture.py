@@ -8,7 +8,8 @@ from typing import Any
 import torch
 from diffusers.models.attention_processor import CogVideoXAttnProcessor2_0
 from diffusers.models.transformers.transformer_cosmos import CosmosAttnProcessor2_0
-from diffusers.models.transformers.transformer_wan import WanAttnProcessor2_0
+from diffusers.models.transformers.transformer_cosmos3 import Cosmos3PackedMoTAttention
+from diffusers.models.transformers.transformer_wan import WanAttnProcessor
 from torch import Tensor, nn
 from torch.nn import functional as F
 
@@ -47,6 +48,7 @@ def _rotate_pairs(tensor: Tensor) -> Tensor:
 def _fake_attention(*, heads: int = 2) -> Any:
     return SimpleNamespace(
         add_k_proj=None,
+        fused_projections=False,
         heads=heads,
         is_cross_attention=False,
         norm_k=None,
@@ -55,7 +57,7 @@ def _fake_attention(*, heads: int = 2) -> Any:
         to_k=Clone(),
         to_out=(nn.Identity(), nn.Identity()),
         to_q=Clone(),
-        to_v=Clone(),
+        to_v=lambda tensor: tensor * 2.0,
     )
 
 
@@ -67,7 +69,12 @@ def _install_capture(
         spec=CaptureSpec(
             step=0,
             layers=[0],
-            features=[FeatureKind.QUERY, FeatureKind.KEY, FeatureKind.HIDDEN_STATES],
+            features=[
+                FeatureKind.QUERY,
+                FeatureKind.KEY,
+                FeatureKind.VALUE,
+                FeatureKind.HIDDEN_STATES,
+            ],
         ),
         context=CaptureContext(),
         sink=sink,
@@ -89,26 +96,30 @@ def _captured_features(sink: CollectingSink) -> dict[FeatureKind, Tensor]:
     return features
 
 
-def test_wan_processor_exposes_rope_query_key_and_per_head_output() -> None:
+def test_wan_processor_exposes_qkv_and_per_head_output() -> None:
     attention = _fake_attention()
+    attention.norm_q = nn.Identity()
+    attention.norm_k = nn.Identity()
     sink = _install_capture(attention, AttentionProcessorKind.WAN)
     hidden_states = torch.tensor([[[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]]])
-    rotary_emb = torch.full((1, 1, 2, 1), 1j, dtype=torch.complex128)
+    rotary_emb = (torch.zeros(1, 2, 1, 2), torch.ones(1, 2, 1, 2))
 
-    output = WanAttnProcessor2_0()(attention, hidden_states, rotary_emb=rotary_emb)
+    output = WanAttnProcessor()(attention, hidden_states, rotary_emb=rotary_emb)
     features = _captured_features(sink)
 
     unrotated = _reshape_heads(hidden_states, attention.heads)
     expected_query = _rotate_pairs(unrotated)
+    expected_value = unrotated * 2.0
     expected_hidden_states = F.scaled_dot_product_attention(
         expected_query,
         expected_query,
-        unrotated,
+        expected_value,
         dropout_p=0.0,
         is_causal=False,
     )
     torch.testing.assert_close(features[FeatureKind.QUERY], expected_query)
     torch.testing.assert_close(features[FeatureKind.KEY], expected_query)
+    torch.testing.assert_close(features[FeatureKind.VALUE], expected_value)
     torch.testing.assert_close(
         features[FeatureKind.HIDDEN_STATES], expected_hidden_states
     )
@@ -117,7 +128,7 @@ def test_wan_processor_exposes_rope_query_key_and_per_head_output() -> None:
     )
 
 
-def test_cosmos_processor_exposes_rope_query_key_and_per_head_output() -> None:
+def test_cosmos_processor_exposes_qkv_and_per_head_output() -> None:
     attention = _fake_attention()
     sink = _install_capture(attention, AttentionProcessorKind.COSMOS)
     attention.norm_q = nn.Identity()
@@ -132,15 +143,17 @@ def test_cosmos_processor_exposes_rope_query_key_and_per_head_output() -> None:
 
     unrotated = _reshape_heads(hidden_states, attention.heads)
     expected_query = _rotate_pairs(unrotated)
+    expected_value = unrotated * 2.0
     expected_hidden_states = F.scaled_dot_product_attention(
         expected_query,
         expected_query,
-        unrotated,
+        expected_value,
         dropout_p=0.0,
         is_causal=False,
     )
     torch.testing.assert_close(features[FeatureKind.QUERY], expected_query)
     torch.testing.assert_close(features[FeatureKind.KEY], expected_query)
+    torch.testing.assert_close(features[FeatureKind.VALUE], expected_value)
     torch.testing.assert_close(
         features[FeatureKind.HIDDEN_STATES], expected_hidden_states
     )
@@ -149,7 +162,7 @@ def test_cosmos_processor_exposes_rope_query_key_and_per_head_output() -> None:
     )
 
 
-def test_cogvideox_processor_exposes_only_rope_video_tokens() -> None:
+def test_cogvideox_processor_exposes_conditional_video_tokens() -> None:
     attention = _fake_attention()
     sink = _install_capture(attention, AttentionProcessorKind.COGVIDEOX)
     attention.norm_q = nn.Identity()
@@ -180,10 +193,11 @@ def test_cogvideox_processor_exposes_only_rope_video_tokens() -> None:
     unrotated = _reshape_heads(combined, attention.heads)
     rotated_video = _rotate_pairs(unrotated[:, :, 1:])
     rotated_combined = torch.cat((unrotated[:, :, :1], rotated_video), dim=2)
+    all_values = unrotated * 2.0
     all_hidden_states = F.scaled_dot_product_attention(
         rotated_combined,
         rotated_combined,
-        unrotated,
+        all_values,
         dropout_p=0.0,
         is_causal=False,
     )[:, :, 1:]
@@ -191,7 +205,45 @@ def test_cogvideox_processor_exposes_only_rope_video_tokens() -> None:
     expected_hidden_states = all_hidden_states[1:]
     torch.testing.assert_close(features[FeatureKind.QUERY], expected_query)
     torch.testing.assert_close(features[FeatureKind.KEY], expected_query)
+    torch.testing.assert_close(features[FeatureKind.VALUE], all_values[1:, :, 1:])
     torch.testing.assert_close(
         features[FeatureKind.HIDDEN_STATES], expected_hidden_states
     )
     torch.testing.assert_close(output, all_hidden_states.transpose(1, 2).flatten(2, 3))
+
+
+def test_cosmos3_capture_aligns_generation_values_with_query_heads() -> None:
+    attention = Cosmos3PackedMoTAttention(
+        hidden_size=8,
+        head_dim=2,
+        num_attention_heads=4,
+        num_key_value_heads=2,
+        attention_bias=False,
+        rms_norm_eps=1e-6,
+    )
+    sink = CollectingSink()
+    capture = AttentionFeatureCapture(
+        spec=CaptureSpec(step=0, layers=[0], features=[FeatureKind.VALUE]),
+        context=CaptureContext(),
+        sink=sink,
+    )
+    session = capture.attach(
+        [SimpleNamespace(self_attn=attention)],
+        processor=AttentionProcessorKind.COSMOS3,
+        attention_attribute="self_attn",
+    )
+    session.begin_chunk(chunk=0)
+    text = torch.randn(2, 8)
+    video = torch.randn(3, 8)
+    rotary_emb = (
+        torch.ones(2, 2),
+        torch.zeros(2, 2),
+        torch.ones(3, 2),
+        torch.zeros(3, 2),
+    )
+    attention(text, video, rotary_emb)
+    attention(text + 1, video + 1, rotary_emb)
+
+    expected = attention.add_v_proj(video).reshape(3, 2, 2)
+    expected = expected.repeat_interleave(2, dim=1).transpose(0, 1).unsqueeze(0)
+    torch.testing.assert_close(_captured_features(sink)[FeatureKind.VALUE], expected)

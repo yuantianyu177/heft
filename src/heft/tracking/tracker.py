@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import os
+from math import isfinite
 
 import torch
 from torch import Tensor
 
 from heft.attn_hook import FeatureKind
+from heft.calibration.temporal import retime_feature_volume
 
 from .config import (
     FeatureSelection,
@@ -15,7 +17,8 @@ from .config import (
     TrackingResult,
 )
 from .features import FeatureVideo, FrameRange
-from .ops import DescriptorState, TrackingOps
+from .ops import DescriptorState
+from .pixel_ops import PixelTrackingOps as TrackingOps
 from .reader import FeatureReader
 
 
@@ -39,9 +42,12 @@ class FeatureTracker:
         selection: FeatureSelection,
         *,
         video_id: str | None = None,
+        time_advance_frames: float = 0.0,
     ) -> TrackingResult:
-        """Track frame-zero query points and return CPU tensors without side effects."""
+        """Track frame-zero queries with an optional signed content-time correction."""
 
+        if not isfinite(time_advance_frames):
+            raise ValueError("time_advance_frames must be finite")
         video = (
             features
             if isinstance(features, FeatureVideo)
@@ -81,9 +87,20 @@ class FeatureTracker:
         ):
             local_start, local_frames = _local_window(chunk)
             volumes = {
-                kind: ops.interpolate_time(volume, local_frames)
+                kind: ops.interpolate_time(
+                    volume,
+                    local_frames,
+                    feature_frame_stride=chunk.feature_frame_stride,
+                    first_feature_frame=chunk.first_feature_frame,
+                    first_rgb_frame=local_start - chunk.start,
+                )
                 for kind, volume in volumes.items()
             }
+            if time_advance_frames:
+                prefix = chunk.start - local_start
+                for kind, volume in volumes.items():
+                    shifted = retime_feature_volume(volume[prefix:], time_advance_frames)
+                    volumes[kind] = torch.cat((volume[:prefix], shifted)) if prefix else shifted
             local_tracks = tracks[:, local_start : chunk.stop]
             local_visibility = visibility[:, local_start : chunk.stop]
 

@@ -44,6 +44,7 @@ def test_capture_spec_accepts_one_step_and_multiple_layers() -> None:
 
     assert spec.step == 7
     assert spec.layers == frozenset({1, 3})
+    assert FeatureKind.VALUE not in spec.features
 
     with pytest.raises(TypeError, match="step must be an integer"):
         CaptureSpec(step=[7, 8], layers=[1, 3])  # type: ignore[arg-type]
@@ -70,21 +71,27 @@ def test_capture_selects_step_layer_head_and_all_feature_kinds() -> None:
         [[[[1.0, 0.0], [0.0, 1.0]], [[1.0, 0.0], [0.0, 1.0]]]],
         requires_grad=True,
     )
+    value = torch.arange(8.0, 16.0).reshape(1, 2, 2, 2).requires_grad_()
     hidden_states = torch.arange(8.0).reshape(1, 2, 2, 2).requires_grad_()
 
     callback = blocks[1].attn1._heft_capture
-    callback(query=query, key=key, hidden_states=hidden_states)
+    callback(query=query, key=key, value=value, hidden_states=hidden_states)
     assert sink.records == []
 
     session.begin_chunk(chunk=4)
-    callback(query=query, key=key, hidden_states=hidden_states)
+    callback(query=query, key=key, value=value, hidden_states=hidden_states)
     assert sink.records == []
 
     # Wan executes conditional first and unconditional second at every step.
-    callback(query=query + 100, key=key + 100, hidden_states=hidden_states + 100)
+    callback(
+        query=query + 100,
+        key=key + 100,
+        value=value + 100,
+        hidden_states=hidden_states + 100,
+    )
     assert sink.records == []
 
-    callback(query=query, key=key, hidden_states=hidden_states)
+    callback(query=query, key=key, value=value, hidden_states=hidden_states)
 
     records = {record.kind: record for record in sink.records}
     assert set(records) == set(FeatureKind)
@@ -95,6 +102,7 @@ def test_capture_selects_step_layer_head_and_all_feature_kinds() -> None:
     assert all(not record.tensor.requires_grad for record in records.values())
     torch.testing.assert_close(records[FeatureKind.QUERY].tensor, query[:, 1].detach())
     torch.testing.assert_close(records[FeatureKind.KEY].tensor, key[:, 1].detach())
+    torch.testing.assert_close(records[FeatureKind.VALUE].tensor, value[:, 1].detach())
     torch.testing.assert_close(
         records[FeatureKind.HIDDEN_STATES].tensor, hidden_states[:, 1].detach()
     )

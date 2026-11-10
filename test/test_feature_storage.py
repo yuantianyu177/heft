@@ -189,7 +189,8 @@ def test_load_rejects_heads_missing_from_the_file(tmp_path: Path) -> None:
             )
 
 
-def test_recorder_to_storage_round_trip(tmp_path: Path) -> None:
+@pytest.mark.parametrize("kind", [FeatureKind.KEY, FeatureKind.VALUE])
+def test_recorder_to_storage_round_trip(tmp_path: Path, kind: FeatureKind) -> None:
     storage = SafetensorsFeatureStorage(tmp_path, expected_heads=[0, 1])
     sources = {
         head: torch.arange(12).reshape(3, 4).transpose(0, 1) + head * 100
@@ -200,7 +201,7 @@ def test_recorder_to_storage_round_trip(tmp_path: Path) -> None:
         for head, tensor in sources.items():
             recorder(
                 CapturedFeature(
-                    kind=FeatureKind.KEY,
+                    kind=kind,
                     chunk=2,
                     step=5,
                     layer=7,
@@ -215,7 +216,7 @@ def test_recorder_to_storage_round_trip(tmp_path: Path) -> None:
             chunk=2,
             step=5,
             layer=7,
-            kind=FeatureKind.KEY,
+            kind=kind,
             head=head,
         )
         assert actual.is_contiguous()

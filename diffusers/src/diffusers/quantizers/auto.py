@@ -17,36 +17,55 @@ https://github.com/huggingface/transformers/blob/c409cd81777fb27aadc043ed3d8339d
 """
 
 import warnings
-from typing import Dict, Optional, Union
 
+from .autoround import AutoRoundQuantizer
+from .bfl import BFLQuantizer
 from .bitsandbytes import BnB4BitDiffusersQuantizer, BnB8BitDiffusersQuantizer
 from .gguf import GGUFQuantizer
+from .modelopt import NVIDIAModelOptQuantizer
+from .nunchaku import NunchakuLiteQuantizer
 from .quantization_config import (
+    AutoRoundConfig,
+    BFLQuantizationConfig,
     BitsAndBytesConfig,
     GGUFQuantizationConfig,
+    NunchakuLiteQuantizationConfig,
+    NVIDIAModelOptConfig,
     QuantizationConfigMixin,
     QuantizationMethod,
     QuantoConfig,
+    SDNQConfig,
     TorchAoConfig,
 )
 from .quanto import QuantoQuantizer
+from .sdnq import SDNQQuantizer
 from .torchao import TorchAoHfQuantizer
 
 
 AUTO_QUANTIZER_MAPPING = {
+    "bfl": BFLQuantizer,
     "bitsandbytes_4bit": BnB4BitDiffusersQuantizer,
     "bitsandbytes_8bit": BnB8BitDiffusersQuantizer,
     "gguf": GGUFQuantizer,
     "quanto": QuantoQuantizer,
     "torchao": TorchAoHfQuantizer,
+    "modelopt": NVIDIAModelOptQuantizer,
+    "auto-round": AutoRoundQuantizer,
+    "nunchaku_lite": NunchakuLiteQuantizer,
+    "sdnq": SDNQQuantizer,
 }
 
 AUTO_QUANTIZATION_CONFIG_MAPPING = {
+    "bfl": BFLQuantizationConfig,
     "bitsandbytes_4bit": BitsAndBytesConfig,
     "bitsandbytes_8bit": BitsAndBytesConfig,
     "gguf": GGUFQuantizationConfig,
     "quanto": QuantoConfig,
     "torchao": TorchAoConfig,
+    "modelopt": NVIDIAModelOptConfig,
+    "auto-round": AutoRoundConfig,
+    "nunchaku_lite": NunchakuLiteQuantizationConfig,
+    "sdnq": SDNQConfig,
 }
 
 
@@ -57,7 +76,7 @@ class DiffusersAutoQuantizer:
     """
 
     @classmethod
-    def from_dict(cls, quantization_config_dict: Dict):
+    def from_dict(cls, quantization_config_dict: dict):
         quant_method = quantization_config_dict.get("quant_method", None)
         # We need a special care for bnb models to make sure everything is BC ..
         if quantization_config_dict.get("load_in_8bit", False) or quantization_config_dict.get("load_in_4bit", False):
@@ -78,7 +97,7 @@ class DiffusersAutoQuantizer:
         return target_cls.from_dict(quantization_config_dict)
 
     @classmethod
-    def from_config(cls, quantization_config: Union[QuantizationConfigMixin, Dict], **kwargs):
+    def from_config(cls, quantization_config: QuantizationConfigMixin | dict, **kwargs):
         # Convert it to a QuantizationConfig if the q_config is a dict
         if isinstance(quantization_config, dict):
             quantization_config = cls.from_dict(quantization_config)
@@ -119,8 +138,8 @@ class DiffusersAutoQuantizer:
     @classmethod
     def merge_quantization_configs(
         cls,
-        quantization_config: Union[dict, QuantizationConfigMixin],
-        quantization_config_from_args: Optional[QuantizationConfigMixin],
+        quantization_config: dict | QuantizationConfigMixin,
+        quantization_config_from_args: QuantizationConfigMixin | None,
     ):
         """
         handles situations where both quantization_config from args and quantization_config from model config are
@@ -136,6 +155,22 @@ class DiffusersAutoQuantizer:
 
         if isinstance(quantization_config, dict):
             quantization_config = cls.from_dict(quantization_config)
+
+        if isinstance(quantization_config, NVIDIAModelOptConfig):
+            quantization_config.check_model_patching()
+
+        if quantization_config_from_args is not None and isinstance(quantization_config, AutoRoundConfig):
+            # For AutoRound, allow overriding fields like `backend` from user args,
+            # since the model config may store a default value (e.g. backend="auto").
+            for key, value in quantization_config_from_args.__dict__.items():
+                if key in ("quant_method",):
+                    continue
+                if hasattr(quantization_config, key) and getattr(quantization_config, key) != value:
+                    warnings.warn(
+                        f"Overriding `{key}` in the model's quantization_config with value {value!r} "
+                        f"from the user-provided `quantization_config`."
+                    )
+                    setattr(quantization_config, key, value)
 
         if warning_msg != "":
             warnings.warn(warning_msg)

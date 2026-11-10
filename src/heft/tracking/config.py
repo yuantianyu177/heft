@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from math import isfinite
 from pathlib import Path
 
 import torch
@@ -14,7 +15,7 @@ from heft.attn_hook import FeatureKind
 from .features import FeatureVideo
 
 _TRACKABLE_FEATURES = frozenset(
-    (FeatureKind.QUERY, FeatureKind.KEY, FeatureKind.HIDDEN_STATES)
+    (FeatureKind.QUERY, FeatureKind.KEY, FeatureKind.VALUE, FeatureKind.HIDDEN_STATES)
 )
 
 
@@ -57,7 +58,9 @@ class TrackingConfig:
         if any(
             kind not in _TRACKABLE_FEATURES for kind in selected if kind is not None
         ):
-            raise ValueError("tracking requires query, key, or hidden-state features")
+            raise ValueError(
+                "tracking requires query, key, value, or hidden-state features"
+            )
         if self.argmax_radius < 0 or self.search_radius < 0:
             raise ValueError("tracking radii must be non-negative")
         if self.visibility_threshold < 0:
@@ -71,6 +74,10 @@ class TrackingConfig:
         lower, upper = self.frequency_range
         if not 0.0 <= lower < upper <= 1.0:
             raise ValueError("frequency_range must satisfy 0 <= lower < upper <= 1")
+        if FeatureKind.VALUE in selected and (lower, upper) != (0.0, 1.0):
+            raise ValueError(
+                "value tracking requires the full channel range (0.0, 1.0)"
+            )
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -81,6 +88,7 @@ class TrackingTask:
     query_points: Tensor
     selection: FeatureSelection
     video_id: str | None
+    time_advance_frames: float
 
     def __init__(
         self,
@@ -89,11 +97,14 @@ class TrackingTask:
         query_points: Tensor,
         selection: FeatureSelection,
         video_id: str | None = None,
+        time_advance_frames: float = 0.0,
     ) -> None:
         if query_points.ndim != 2 or query_points.shape[1] != 3:
             raise ValueError("query_points must have shape [point, 3]")
         if query_points.device.type != "cpu":
             raise ValueError("query_points must be a CPU tensor for multiprocessing")
+        if not isfinite(time_advance_frames):
+            raise ValueError("time_advance_frames must be finite")
         normalized_points = query_points.to(dtype=torch.float32).contiguous()
         object.__setattr__(
             self,
@@ -103,6 +114,7 @@ class TrackingTask:
         object.__setattr__(self, "query_points", normalized_points)
         object.__setattr__(self, "selection", selection)
         object.__setattr__(self, "video_id", video_id)
+        object.__setattr__(self, "time_advance_frames", float(time_advance_frames))
 
 
 @dataclass(frozen=True, slots=True)

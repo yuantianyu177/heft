@@ -180,6 +180,20 @@ def test_cosmos_reader_keeps_split_half_rope_pairs(tmp_path: Path) -> None:
     assert torch.equal(prefetched, loaded)
 
 
+def test_sparse_features_use_source_frame_centers_across_chunks() -> None:
+    volume = torch.tensor([0.5, 2.5, 4.5]).reshape(3, 1, 1, 1)
+    sampled = TrackingOps.interpolate_time(
+        volume,
+        6,
+        feature_frame_stride=2,
+        first_feature_frame=0.5,
+        first_rgb_frame=-1,
+    )
+    torch.testing.assert_close(
+        sampled.flatten(), torch.tensor([0.5, 0.5, 1.0, 2.0, 3.0, 4.0])
+    )
+
+
 def test_region_matching_matches_legacy_full_probability_map() -> None:
     torch.manual_seed(7)
     config = TrackingConfig(
@@ -299,7 +313,12 @@ def test_descriptor_state_renormalizes_only_updated_rows() -> None:
     assert torch.equal(state.normalized[1], unchanged)
 
 
-def test_tracker_follows_moving_feature_and_returns_visibility(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "kinds", [(FeatureKind.QUERY, FeatureKind.KEY), (FeatureKind.VALUE,)]
+)
+def test_tracker_follows_moving_feature_and_returns_visibility(
+    tmp_path: Path, kinds: tuple[FeatureKind, ...]
+) -> None:
     frames = 3
     height = width = 3
     channels = 6
@@ -314,17 +333,19 @@ def test_tracker_follows_moving_feature_and_returns_visibility(tmp_path: Path) -
         step=2,
         layers=(0,),
         heads=(0,),
-        feature_kinds=("query", "key"),
+        feature_kinds=tuple(kind.value for kind in kinds),
         rope=RopeSpec(RopePairing.ADJACENT, 1, 1, 1),
     )
     feature = torch.zeros(frames, height, width, channels)
     for frame in range(frames):
         feature[frame, 1, frame, 0] = 1.0
     stored = feature.reshape(1, frames * height * width, channels)
-    _write_group(video, FeatureKind.QUERY, stored)
-    _write_group(video, FeatureKind.KEY, stored)
+    for kind in kinds:
+        _write_group(video, kind, stored)
 
     config = TrackingConfig(
+        query_feature=kinds[0],
+        target_feature=kinds[-1],
         argmax_radius=0.1,
         search_radius=2.0,
         visibility_threshold=0.1,

@@ -4,7 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from heft import COGVIDEOX, COSMOS_2, WAN_2_1, ModelConfig, TrackingConfig
+from heft import (
+    COGVIDEOX,
+    COGVIDEOX_1_5_5B,
+    COSMOS_2,
+    COSMOS_3_EDGE,
+    WAN_2_1,
+    WAN_2_2_TI2V_5B,
+    ModelConfig,
+    TrackingConfig,
+)
 from heft.attn_hook import CaptureSpec, FeatureKind
 from heft.tracking import FeatureSelection
 
@@ -28,6 +37,13 @@ class DavisProfile:
     @property
     def selection(self) -> FeatureSelection:
         return FeatureSelection(layer=self.layer, head=self.head)
+
+
+_FULL_BAND_KEYS = TrackingConfig(
+    query_feature=FeatureKind.KEY,
+    target_feature=FeatureKind.KEY,
+    update_feature=FeatureKind.KEY,
+)
 
 
 DAVIS_PROFILES = {
@@ -74,5 +90,14 @@ DAVIS_PROFILES = {
             visibility_threshold=23.0,
             feature_ema_alpha=0.05,
         ),
+    ),
+    "wan2.2-ti2v-5b": DavisProfile(
+        model=WAN_2_2_TI2V_5B, layer=18, head=0, tracking=_FULL_BAND_KEYS
+    ),
+    "cogvideox1.5-5b": DavisProfile(
+        model=COGVIDEOX_1_5_5B, layer=18, head=0, tracking=_FULL_BAND_KEYS
+    ),
+    "cosmos3-edge": DavisProfile(
+        model=COSMOS_3_EDGE, layer=18, head=0, tracking=_FULL_BAND_KEYS
     ),
 }
