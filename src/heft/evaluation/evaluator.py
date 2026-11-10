@@ -83,6 +83,11 @@ def _evaluate_video(
 ) -> MetricCounts:
     annotations = sample.annotations
     num_frames = result.tracks.shape[1]
+    if config.require_full_video and num_frames != sample.video.num_frames:
+        raise ValueError(
+            f"{sample.video_id}: full-video evaluation expects "
+            f"{sample.video.num_frames} frames, got {num_frames}"
+        )
     selected, query_frames = AnnotationQueries(
         annotations=annotations,
         policy=config.query_policy,
@@ -118,9 +123,13 @@ def _evaluate_video(
 
     reference_height, reference_width = config.reference_size
     reference_scale = torch.tensor(
-        (reference_width - 1, reference_height - 1),
+        (reference_width, reference_height),
         dtype=torch.float32,
     )
+    first_scored_frames = (
+        query_frames if config.include_first_frame else query_frames + 1
+    )
+    evaluation_mask = torch.arange(num_frames) >= first_scored_frames[:, None]
     predicted_tracks = result.tracks.float() / frame_scale * reference_scale
     ground_truth_tracks = ground_truth_tracks * reference_scale
     return compute_counts(
@@ -129,4 +138,5 @@ def _evaluate_video(
         result.visibility,
         ground_truth_visibility,
         config.thresholds,
+        evaluation_mask=evaluation_mask,
     )

@@ -19,6 +19,7 @@ from .config import (
 from .features import FeatureVideo, FrameRange
 from .ops import DescriptorState
 from .pixel_ops import PixelTrackingOps as TrackingOps
+from .query import _validate_queries
 from .reader import FeatureReader
 
 
@@ -44,7 +45,7 @@ class FeatureTracker:
         video_id: str | None = None,
         time_advance_frames: float = 0.0,
     ) -> TrackingResult:
-        """Track frame-zero queries with an optional signed content-time correction."""
+        """Track each query from its start frame through the end of the video."""
 
         if not isfinite(time_advance_frames):
             raise ValueError("time_advance_frames must be finite")
@@ -68,8 +69,18 @@ class FeatureTracker:
         if points.shape[0] == 0:
             return self._result(video, points, tracks, visibility, selection, video_id)
 
-        tracks[:, 0] = points[:, :2]
-        visibility[:, 0] = True
+        query_frames, order = points[:, 2].long().sort(stable=True)
+        point_indices = torch.arange(points.shape[0], device=self.device)
+        tracks[point_indices, query_frames] = points[order, :2]
+        visibility[point_indices, query_frames] = True
+
+        frames, sizes = query_frames.unique_consecutive(return_counts=True)
+        groups: list[tuple[int, slice]] = []
+        group_start = 0
+        for frame, size in zip(frames.tolist(), sizes.tolist(), strict=True):
+            groups.append((frame, slice(group_start, group_start + size)))
+            group_start += size
+
         reader = FeatureReader(video, device=self.device)
         ops = TrackingOps(
             frame_size=video.frame_size,
@@ -77,10 +88,11 @@ class FeatureTracker:
             device=self.device,
         )
         required_kinds = self._required_kinds()
-        updated_descriptors: DescriptorState | None = None
+        descriptors_by_frame: dict[int, DescriptorState] = {}
+        first_query_frame = groups[0][0]
 
         for chunk, volumes in reader.prefetch_chunks(
-            video.chunks,
+            (chunk for chunk in video.chunks if chunk.stop > first_query_frame),
             selection=selection,
             kinds=required_kinds,
             frequency_range=self.config.frequency_range,
@@ -99,61 +111,92 @@ class FeatureTracker:
             if time_advance_frames:
                 prefix = chunk.start - local_start
                 for kind, volume in volumes.items():
-                    shifted = retime_feature_volume(volume[prefix:], time_advance_frames)
-                    volumes[kind] = torch.cat((volume[:prefix], shifted)) if prefix else shifted
-            local_tracks = tracks[:, local_start : chunk.stop]
-            local_visibility = visibility[:, local_start : chunk.stop]
-
-            if updated_descriptors is None:
-                query_frame = ops.frame(volumes[self.config.query_feature], 0)
-                updated_descriptors = ops.make_descriptors(query_frame, points[:, :2])
-
-            for frame_index in range(1, local_frames):
-                target_frame = ops.frame(
-                    volumes[self.config.target_feature], frame_index
-                )
-                predicted = ops.predict(
-                    updated_descriptors,
-                    target_frame,
-                    previous_positions=local_tracks[:, frame_index - 1],
-                    previous_visibility=local_visibility[:, frame_index - 1],
-                    apply_search_mask=selection.head is not None,
-                    softmax_before_resize=True,
-                )
-                query_frame = (
-                    target_frame
-                    if self.config.query_feature is self.config.target_feature
-                    else ops.frame(volumes[self.config.query_feature], frame_index)
-                )
-                local_visibility[:, frame_index] = True
-                current_visibility = self._visibility(
-                    predicted,
-                    frame_index=frame_index,
-                    query_frame=query_frame,
-                    volumes=volumes,
-                    tracks=local_tracks,
-                    visibility=local_visibility,
-                    ops=ops,
-                )
-                local_tracks[:, frame_index] = predicted
-                local_visibility[:, frame_index] = current_visibility
-
-                update_kind = self._active_update_feature
-                if update_kind is not None:
-                    if update_kind is self.config.target_feature:
-                        update_frame = target_frame
-                    elif update_kind is self.config.query_feature:
-                        update_frame = query_frame
-                    else:
-                        update_frame = ops.frame(volumes[update_kind], frame_index)
-                    ops.update_descriptor(
-                        updated_descriptors,
-                        update_frame,
-                        predicted,
-                        current_visibility,
+                    shifted = retime_feature_volume(
+                        volume[prefix:], time_advance_frames
                     )
+                    volumes[kind] = (
+                        torch.cat((volume[:prefix], shifted)) if prefix else shifted
+                    )
+            for query_frame, rows in groups:
+                if query_frame >= chunk.stop:
+                    break
+                # The first chunk for a group starts at its query. Later chunks
+                # start at the existing handoff frame.
+                start = max(local_start, query_frame)
+                offset = start - local_start
+                descriptors_by_frame[query_frame] = self._track_chunk(
+                    {kind: volume[offset:] for kind, volume in volumes.items()},
+                    tracks[rows, start : chunk.stop],
+                    visibility[rows, start : chunk.stop],
+                    descriptors_by_frame.get(query_frame),
+                    ops=ops,
+                    apply_search_mask=selection.head is not None,
+                )
 
-        return self._result(video, points, tracks, visibility, selection, video_id)
+        input_order = order.argsort()
+        return self._result(
+            video,
+            points,
+            tracks[input_order],
+            visibility[input_order],
+            selection,
+            video_id,
+        )
+
+    def _track_chunk(
+        self,
+        volumes: dict[FeatureKind, Tensor],
+        tracks: Tensor,
+        visibility: Tensor,
+        descriptors: DescriptorState | None,
+        *,
+        ops: TrackingOps,
+        apply_search_mask: bool,
+    ) -> DescriptorState:
+        if descriptors is None:
+            query_frame = ops.frame(volumes[self.config.query_feature], 0)
+            descriptors = ops.make_descriptors(query_frame, tracks[:, 0])
+
+        update_kind = self._active_update_feature
+        for frame_index in range(1, tracks.shape[1]):
+            target_frame = ops.frame(volumes[self.config.target_feature], frame_index)
+            predicted = ops.predict(
+                descriptors,
+                target_frame,
+                previous_positions=tracks[:, frame_index - 1],
+                previous_visibility=visibility[:, frame_index - 1],
+                apply_search_mask=apply_search_mask,
+                softmax_before_resize=True,
+            )
+            query_frame = (
+                target_frame
+                if self.config.query_feature is self.config.target_feature
+                else ops.frame(volumes[self.config.query_feature], frame_index)
+            )
+            visibility[:, frame_index] = True
+            current_visibility = self._visibility(
+                predicted,
+                frame_index=frame_index,
+                query_frame=query_frame,
+                volumes=volumes,
+                tracks=tracks,
+                visibility=visibility,
+                ops=ops,
+            )
+            tracks[:, frame_index] = predicted
+            visibility[:, frame_index] = current_visibility
+
+            if update_kind is not None:
+                if update_kind is self.config.target_feature:
+                    update_frame = target_frame
+                elif update_kind is self.config.query_feature:
+                    update_frame = query_frame
+                else:
+                    update_frame = ops.frame(volumes[update_kind], frame_index)
+                ops.update_descriptor(
+                    descriptors, update_frame, predicted, current_visibility
+                )
+        return descriptors
 
     def _visibility(
         self,
@@ -244,27 +287,13 @@ class FeatureTracker:
         points: Tensor,
         selection: FeatureSelection,
     ) -> None:
-        if points.ndim != 2 or points.shape[1] != 3:
-            raise ValueError("query_points must have shape [point, 3]")
+        _validate_queries(points, video)
         if selection.layer not in video.layers:
             raise ValueError(f"layer {selection.layer} was not captured")
         if selection.head is not None and (
             video.heads is not None and selection.head not in video.heads
         ):
             raise ValueError(f"head {selection.head} was not captured")
-        if points.numel() == 0:
-            return
-        if not torch.equal(points[:, 2], torch.zeros_like(points[:, 2])):
-            raise ValueError(
-                "the current tracking algorithm requires frame-zero queries"
-            )
-        if (
-            points[:, 0].amin() < 0
-            or points[:, 0].amax() > video.frame_size[1] - 1
-            or points[:, 1].amin() < 0
-            or points[:, 1].amax() > video.frame_size[0] - 1
-        ):
-            raise ValueError("query point coordinates are outside the video frame")
 
     @staticmethod
     def _result(

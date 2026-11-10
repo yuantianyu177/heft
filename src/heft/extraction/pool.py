@@ -214,7 +214,7 @@ def _plan_chunks(
     tasks: Sequence[ExtractionTask],
     chunk_size: int,
     *,
-    tail_policy: TailFramePolicy | str = TailFramePolicy.DISCARD,
+    tail_policy: TailFramePolicy | str = TailFramePolicy.PAD,
 ) -> tuple[ChunkJob, ...]:
     tail_policy = TailFramePolicy(tail_policy)
     jobs: list[ChunkJob] = []

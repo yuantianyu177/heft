@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 
 from heft import (
     AnnotationQueries,
+    EvaluationConfig,
     FeatureVideo,
     TemporalMode,
     TrackingTask,
@@ -34,16 +35,23 @@ def main() -> None:
     if not isfinite(prior):
         raise ValueError("HEFT_TIME_PRIOR_FRAMES must be finite")
     profile = DAVIS_PROFILES[model_name]
+    evaluation = EvaluationConfig()
     dataset = TapVidDavisDataset(os.environ["HEFT_DATASET_ROOT"])
     path_fields = {"model": model_name, "temporal_mode": temporal_mode.value, "time_calibration": calibration}
     feature_root = Path(os.environ["HEFT_FEATURE_OUTPUT_ROOT"].format(**path_fields))
     output_path = Path(os.environ["HEFT_EVALUATION_OUTPUT"].format(**path_fields))
     gpu_ids = tuple(map(int, os.environ["HEFT_GPU_IDS"].split(",")))
     samples = tuple(dataset[index] for index in range(len(dataset)))
-    videos = {
-        sample.video_id: FeatureVideo.open(feature_root / sample.video_id)
-        for sample in samples
-    }
+    videos = {}
+    for sample in samples:
+        features = FeatureVideo.open(feature_root / sample.video_id)
+        if features.num_frames != sample.video.num_frames:
+            raise ValueError(
+                f"{sample.video_id}: expected features for all {sample.video.num_frames} "
+                f"video frames, got {features.num_frames}. "
+                "Re-extract features into a fresh HEFT_FEATURE_OUTPUT_ROOT."
+            )
+        videos[sample.video_id] = features
 
     tasks = []
     clocks = {}
@@ -64,7 +72,9 @@ def main() -> None:
         tasks.append(
             TrackingTask(
                 features=features,
-                query_points=AnnotationQueries(sample.annotations).generate(features),
+                query_points=AnnotationQueries(
+                    sample.annotations, policy=evaluation.query_policy
+                ).generate(features),
                 selection=profile.selection,
                 video_id=sample.video_id,
                 time_advance_frames=advance,
@@ -76,7 +86,7 @@ def main() -> None:
         config=profile.tracking,
         gpu_ids=gpu_ids,
     )
-    report = evaluate_dataset(results, dataset)
+    report = evaluate_dataset(results, dataset, config=evaluation)
     payload = asdict(report)
     if calibration == "adaptive":
         payload["time_calibration"] = {"mode": calibration, "prior_frames": prior, "videos": clocks}

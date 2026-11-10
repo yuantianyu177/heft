@@ -130,7 +130,7 @@ class ExtractionConfig:
 
     capture: CaptureSpec
     chunk_size: int
-    tail_policy: TailFramePolicy = TailFramePolicy.DISCARD
+    tail_policy: TailFramePolicy = TailFramePolicy.PAD
     max_pending_features: int = 8
     overwrite: bool = False
     temporal_mode: TemporalMode | str = TemporalMode.POST_DIT

@@ -10,12 +10,15 @@ from heft.tracking import AnnotationQueryPolicy
 
 @dataclass(frozen=True, slots=True)
 class EvaluationConfig:
-    """Metric coordinate system and aggregation policy."""
+    """Frame coverage, metric coordinate system, and aggregation policy."""
 
-    query_policy: AnnotationQueryPolicy = "first_frame_visible"
+    query_policy: AnnotationQueryPolicy = "first_visible"
     thresholds: tuple[float, ...] = (1.0, 2.0, 4.0, 8.0, 16.0)
     reference_size: tuple[int, int] = (256, 256)
     aggregation: Literal["macro", "micro"] = "macro"
+    # Include each trajectory's query frame when enabled.
+    include_first_frame: bool = False
+    require_full_video: bool = True
 
     def __post_init__(self) -> None:
         thresholds = tuple(float(value) for value in self.thresholds)

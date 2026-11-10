@@ -89,7 +89,7 @@ class AnnotationQueries:
     """Generate queries from resolution-independent dataset annotations."""
 
     annotations: TrackAnnotations
-    policy: AnnotationQueryPolicy = "first_frame_visible"
+    policy: AnnotationQueryPolicy = "first_visible"
 
     def indices(self, num_frames: int | None = None) -> tuple[Tensor, Tensor]:
         """Return selected annotation rows and their query frames."""

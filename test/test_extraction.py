@@ -116,13 +116,13 @@ def test_new_backbones_pad_the_codec_and_patch_grids() -> None:
         assert model.feature_timing(input_video=True) == (4, 0.0)
 
 
-def test_extraction_defaults_to_discarding_incomplete_tail() -> None:
+def test_extraction_defaults_to_padding_incomplete_tail() -> None:
     config = ExtractionConfig(
         capture=_extraction_config(chunk_size=5).capture,
         chunk_size=5,
     )
 
-    assert config.tail_policy is TailFramePolicy.DISCARD
+    assert config.tail_policy is TailFramePolicy.PAD
 
 
 def test_uint8_dataset_video_is_normalized_for_diffusers() -> None:
@@ -154,11 +154,7 @@ def test_final_chunk_repeats_its_last_frame_for_pipeline_padding(
         output_dir=tmp_path,
     )
 
-    jobs = _plan_chunks(
-        (task,),
-        chunk_size=5,
-        tail_policy=TailFramePolicy.PAD,
-    )
+    jobs = _plan_chunks((task,), chunk_size=5)
 
     assert [(job.num_frames, job.pipeline_num_frames) for job in jobs] == [
         (5, 5),

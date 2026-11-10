@@ -47,6 +47,8 @@ def compute_counts(
     predicted_visibility: Tensor,
     ground_truth_visibility: Tensor,
     thresholds: tuple[float, ...],
+    *,
+    evaluation_mask: Tensor | None = None,
 ) -> MetricCounts:
     """Compute reusable integer counts for all thresholds in one pass."""
 
@@ -55,19 +57,20 @@ def compute_counts(
     within = squared_distance.unsqueeze(0) < threshold_tensor[:, None, None].square()
     ground_truth_visibility = ground_truth_visibility.bool()
     predicted_visibility = predicted_visibility.bool()
-    visible = ground_truth_visibility.unsqueeze(0)
-    predicted_visible = predicted_visibility.unsqueeze(0)
+    if evaluation_mask is None:
+        evaluation_mask = torch.ones_like(ground_truth_visibility)
+    visible = (ground_truth_visibility & evaluation_mask).unsqueeze(0)
+    predicted_visible = (predicted_visibility & evaluation_mask).unsqueeze(0)
 
     within_correct = (within & visible).sum(dim=(1, 2))
     true_positives = (within & visible & predicted_visible).sum(dim=(1, 2))
     false_positives = (predicted_visible & (~visible | ~within)).sum(dim=(1, 2))
-    visible_count = int(ground_truth_visibility.sum().item())
+    visible_count = int(visible.sum().item())
+    correct_visibility = predicted_visibility == ground_truth_visibility
 
     return MetricCounts(
-        occlusion_correct=int(
-            (predicted_visibility == ground_truth_visibility).sum().item()
-        ),
-        positions=ground_truth_visibility.numel(),
+        occlusion_correct=int((correct_visibility & evaluation_mask).sum().item()),
+        positions=int(evaluation_mask.sum().item()),
         visible=visible_count,
         within_correct=tuple(int(value) for value in within_correct.tolist()),
         true_positives=tuple(int(value) for value in true_positives.tolist()),

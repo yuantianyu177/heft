@@ -75,6 +75,8 @@ Track and evaluate:
 uv run python scripts/evaluate_davis_features.py
 ```
 
+The DAVIS workflow fills an incomplete 25-frame extraction chunk by repeating its final RGB frame. Tracking uses the original video length. TAP-Vid `first` initializes each track at its first visible frame and scores only the real frames after that query. The evaluator multiplies normalized coordinates by 256 and gives each video equal weight in the dataset average. Use a fresh `HEFT_FEATURE_OUTPUT_ROOT` to regenerate older caches that discarded trailing frames.
+
 Set `HEFT_TIME_CALIBRATION=adaptive` to estimate a signed advance for each video from its RGB frames and saved descriptors. The evaluation JSON includes the estimate and its evidence for every video. An optional `HEFT_TIME_PRIOR_FRAMES` supplies a fallback when neither motion cue has a reliable estimate. Include `{time_calibration}` in `HEFT_EVALUATION_OUTPUT` to separate nominal and calibrated scores.
 
 ## Python API
@@ -84,7 +86,6 @@ from heft import (
     COSMOS_2,
     ExtractionConfig,
     ExtractionTask,
-    TailFramePolicy,
     extract_feature,
 )
 from heft.attn_hook import CaptureSpec, FeatureKind
@@ -103,7 +104,6 @@ config = ExtractionConfig(
         features=(FeatureKind.QUERY, FeatureKind.KEY),
     ),
     chunk_size=25,
-    tail_policy=TailFramePolicy.DISCARD,
     temporal_mode="post_dit",
 )
 
@@ -119,6 +119,8 @@ result = extract_feature(
 Use `features=(FeatureKind.VALUE,)` to save only the value projection before attention weighting. For V–V tracking, set `query_feature`, `target_feature`, and `update_feature` to `FeatureKind.VALUE` in `TrackingConfig` and use the full channel range `(0.0, 1.0)`.
 
 Tracking is exposed through `track_feature()` and `track_features()`. Query generators include `ExplicitQueries`, `GridQueries`, `MaskGridQueries`, and `AnnotationQueries`. Dataset-backed results can be evaluated with `evaluate_dataset()`.
+
+Set `query_policy="first_frame_visible"` in `EvaluationConfig` and `policy="first_frame_visible"` in `AnnotationQueries` to use queries from video frame zero. Set `include_first_frame=True` in `EvaluationConfig` to also score each trajectory's query frame. Use `require_full_video=False` to score a shortened prefix, such as one extracted with `tail_policy=TailFramePolicy.DISCARD`.
 
 Use `heft.calibration.estimate_feature_video_lag()` with the original RGB frames and selected descriptor, then set `TrackingTask.time_advance_frames` to `estimate.advance_frames`. A positive advance reads a later feature for each timestamp while retaining the first feature of each clip.
 

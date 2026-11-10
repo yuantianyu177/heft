@@ -413,6 +413,50 @@ def test_tracker_handles_a_short_final_chunk(tmp_path: Path) -> None:
     assert result.visibility.all()
 
 
+def test_tracker_starts_mixed_queries_at_their_own_frames(tmp_path: Path) -> None:
+    video = FeatureVideo(
+        root=tmp_path,
+        name="moving",
+        model="fake",
+        num_frames=5,
+        frame_size=(3, 5),
+        feature_size=(3, 5),
+        chunks=(FrameRange(0, 0, 3, 3, 1), FrameRange(1, 3, 5, 2, 1)),
+        step=0,
+        layers=(0,),
+        heads=(0,),
+        feature_kinds=("key",),
+        rope=RopeSpec(RopePairing.ADJACENT, 1, 1, 1),
+    )
+    feature = torch.zeros(5, 3, 5, 6)
+    feature[torch.arange(5), 1, torch.arange(5), 0] = 1.0
+    for chunk in video.chunks:
+        stored = feature[chunk.start : chunk.stop].reshape(1, -1, 6)
+        _write_group(video, FeatureKind.KEY, stored, chunk=chunk.index)
+
+    tracker = FeatureTracker(
+        config=TrackingConfig(
+            query_feature=FeatureKind.KEY,
+            target_feature=FeatureKind.KEY,
+            argmax_radius=0.0,
+            search_radius=2.0,
+            visibility_threshold=2.0,
+        ),
+        device="cpu",
+    )
+    points = torch.tensor(
+        [[3.0, 1.0, 3.0], [0.0, 1.0, 0.0], [4.0, 1.0, 4.0], [1.0, 1.0, 1.0]]
+    )
+    result = tracker.track(video, points, FeatureSelection(layer=0, head=0))
+
+    expected_visibility = torch.arange(5) >= points[:, 2, None]
+    positions = torch.stack((torch.arange(5), torch.ones(5)), dim=1)
+    expected_tracks = positions[None] * expected_visibility[..., None]
+    torch.testing.assert_close(result.query_points, points)
+    torch.testing.assert_close(result.tracks, expected_tracks)
+    assert torch.equal(result.visibility, expected_visibility)
+
+
 def test_tracking_pool_routes_new_video_to_the_next_idle_gpu(tmp_path: Path) -> None:
     selection = FeatureSelection(layer=0, head=0)
     tasks = [

@@ -166,7 +166,7 @@ def test_annotation_queries_exclude_tracks_not_visible_on_first_frame(
     torch.testing.assert_close(queries, torch.tensor([[1.4, 2.0, 0.0]]))
 
 
-def test_annotation_queries_can_select_each_tracks_first_visible_frame(
+def test_annotation_queries_default_to_each_tracks_first_visible_frame(
     tmp_path: Path,
 ) -> None:
     feature_video = _feature_video(tmp_path)
@@ -187,7 +187,6 @@ def test_annotation_queries_can_select_each_tracks_first_visible_frame(
 
     queries = AnnotationQueries(
         annotations=TrackAnnotations(tracks=tracks, visibility=visibility),
-        policy="first_visible",
     ).generate(feature_video)
 
     torch.testing.assert_close(

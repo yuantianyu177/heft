@@ -212,7 +212,6 @@ def main():
                 if np.all(query_frames==0):
                     result=track_active(video,queries)
                 else:
-                    # The production tracker initializes only at frame zero.
                     # Group by the provided query timestamp and expose a sliced
                     # feature video beginning there. Preserve subsequent chunk
                     # boundaries and use the original, already-extracted tensors.
